@@ -67,6 +67,84 @@ html.light-mode {
 }
 html, body { transition: background-color .2s ease, color .2s ease; }
 
+/* ============================================================
+   RELATÓRIO — sempre em fundo claro/colorido, independente do
+   tema dark/light geral da app (visual tipo "card para partilhar").
+   ============================================================ */
+:root {
+  --rep-bg:      #ffffff;
+  --rep-bg2:     #f4f6f8;
+  --rep-card:    #ffffff;
+  --rep-border:  #e3e7eb;
+  --rep-txt:     #14202b;
+  --rep-txt2:    #5b6b78;
+  --rep-txt3:    #93a1ac;
+  --rep-blue:    #0096c7;
+  --rep-blue2:   #023e73;
+  --rep-orange:  #f4762a;
+  --rep-orange2: #b8470f;
+  --rep-gold:    #e0a721;
+}
+#app.report-mode { background: var(--rep-bg2); margin: -18px; padding: 14px; }
+.rep-header {
+  background: var(--rep-blue2); color: white; border-radius: 16px; padding: 22px 20px;
+  margin-bottom: 14px; text-align: center;
+}
+.rep-header .rep-swimmer-name { font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.92); }
+.rep-header .rep-prova-label { font-size: 13px; color: var(--rep-gold); font-weight: 700; margin-top: 2px; margin-bottom: 10px; }
+.rep-header .rep-time { font-size: 46px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.rep-header .rep-sub { font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 8px; }
+.rep-header .rep-pb {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
+  background: var(--rep-gold); color: #4a3300; border-radius: 20px; padding: 5px 14px;
+  font-size: 12px; font-weight: 700;
+}
+.rep-vs-header { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.rep-vs-header .rep-vs-side { flex: 1; text-align: center; }
+.rep-vs-header .rep-vs-name { font-size: 12px; color: rgba(255,255,255,0.7); margin-bottom: 4px; font-weight: 600; }
+.rep-vs-header .rep-vs-time { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rep-vs-header .rep-vs-time.is-winner { color: var(--rep-gold); }
+.rep-vs-header .rep-vs-sep { font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 700; }
+.rep-diff { text-align: center; font-size: 12px; color: rgba(255,255,255,0.75); margin-top: 10px; }
+
+.rep-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--rep-card); border: 1px solid var(--rep-border); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 14px; color: var(--rep-txt);
+}
+.rep-toggle .ct-label { font-size: 14px; font-weight: 700; }
+.rep-toggle .ct-sub { font-size: 12px; color: var(--rep-txt2); margin-top: 2px; }
+
+.rep-card {
+  background: var(--rep-card); border: 1px solid var(--rep-border); border-radius: 16px;
+  padding: 16px 16px 12px; margin-bottom: 12px; color: var(--rep-txt);
+  box-shadow: 0 1px 3px rgba(20,32,43,0.04);
+}
+.rep-card .rep-card-title { font-size: 16px; font-weight: 800; color: var(--rep-blue2); }
+.rep-card canvas { display: block; width: 100% !important; height: 230px !important; max-height: 230px; }
+.rep-card .rep-card-desc { font-size: 12px; color: var(--rep-txt3); margin-bottom: 10px; }
+.rep-legend { display: flex; align-items: center; gap: 14px; justify-content: center; margin-bottom: 4px; }
+.rep-legend .rep-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--rep-txt2); }
+.rep-legend .rep-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+.rep-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--rep-border); color: var(--rep-txt);
+}
+.rep-row:last-child { border-bottom: none; }
+.rep-row .rep-row-label { font-size: 13px; color: var(--rep-txt2); font-weight: 600; }
+.rep-row .rep-row-value { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rep-row .rep-row-pb { font-size: 11px; color: var(--rep-gold); font-weight: 700; margin-left: 8px; }
+
+.rep-btn {
+  display: block; width: 100%; text-align: center; border-radius: 12px; padding: 13px;
+  font-size: 15px; font-weight: 700; border: none; margin-top: 8px;
+}
+.rep-btn-primary { background: var(--rep-blue2); color: white; }
+.rep-btn-ghost { background: var(--rep-card); color: var(--rep-blue2); border: 1px solid var(--rep-border); }
+.rep-btn-danger { background: var(--rep-card); color: #b3261e; border: 1px solid #f3c8c4; }
+
+
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { background: var(--bg); color: var(--txt); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100%; overflow-x: hidden; }
 body { padding-bottom: 40px; }
@@ -369,6 +447,16 @@ html:not(.light-mode) input[type="date"] { color-scheme: dark; }
 .video-mark-item.is-marked { opacity: .6; }
 .video-mark-item .vm-label { flex: 1; font-size: 14px; }
 .video-mark-item .vm-label .vm-sub { display: block; font-size: 11px; color: var(--txt3); }
+.video-ciclos-input {
+  width: 70px; flex-shrink: 0; background: var(--bg2); border: 1px solid var(--border2); color: var(--txt);
+  border-radius: 6px; padding: 9px 8px; font-size: 15px; text-align: right; font-variant-numeric: tabular-nums;
+}
+.video-mark-item .ir-unit { width: 64px; flex-shrink: 0; text-align: left; }
+.video-ciclos-subdivider {
+  font-size: 11px; color: var(--accent3); font-weight: 600; text-transform: uppercase;
+  letter-spacing: .3px; padding: 10px 14px 4px;
+}
+.video-mark-list-ciclos { max-height: 50vh; }
 .video-mark-item .vm-value { font-size: 13px; color: var(--accent3); font-variant-numeric: tabular-nums; min-width: 56px; text-align: right; }
 .video-mark-item .vm-btn {
   background: var(--accent2); color: #04141f; border: none; border-radius: var(--radius-sm);
@@ -1523,6 +1611,7 @@ const state = {
     objectUrl: null,
     tempoPartidaAbsoluto: null, // tempo do vídeo (video.currentTime) correspondente ao frame da partida
     indiceMarcacaoAtual: 0,     // índice do próximo campo a marcar na lista sequencial
+    modo: 'tempos',             // 'tempos' (marcação por frame) | 'ciclos' (contagens manuais, vídeo continua visível)
     zoom: 1, panX: 0, panY: 0,  // estado de ampliação/deslocação do vídeo principal
     estabilizando: false,       // true enquanto o vídeo ainda está a processar um seek (currentTime não fiável)
   },
@@ -1549,6 +1638,11 @@ function render() {
   const backBtn = document.getElementById('backBtn');
   const title = document.getElementById('headerTitle');
   const sub = document.getElementById('headerSubtitle');
+
+  // O relatório (normal ou comparativo) usa sempre fundo claro/colorido,
+  // independente do tema dark/light geral da app — os restantes ecrãs
+  // seguem o tema normal.
+  app.classList.toggle('report-mode', state.screen === 'relatorio' || state.screen === 'compararRelatorio');
 
   if (state.screen === 'lista') {
     backBtn.style.display = 'none';
@@ -1623,15 +1717,16 @@ function renderListaNadadores() {
   if (!swimmers.length) {
     html += '<div class="empty-state"><p>Ainda não tens nenhum perfil de nadador.<br>Cria o primeiro para começar a registar análises.</p></div>';
   } else {
-    html += '<button class="btn btn-ghost" style="margin-bottom:14px" onclick="nav(\'compararSelecao\')">Comparar análises</button>';
-    swimmers.slice().sort(function(a,b){return a.nome.localeCompare(b.nome);}).forEach(function (s) {
-      html += '<div class="swimmer-item" onclick="nav(\'perfil\',{swimmerId:\'' + s.id + '\'})">' +
-        '<div class="swimmer-avatar">' + iniciais(s.nome) + '</div>' +
-        '<div class="swimmer-info"><div class="name">' + escapeHtml(s.nome) + '</div>' +
-        '<div class="meta">' + s.analises.length + ' análise' + (s.analises.length === 1 ? '' : 's') + '</div></div>' +
-        '<div class="chevron">›</div></div>';
-    });
+    html += '<button class="btn btn-ghost" style="margin-bottom:10px" onclick="nav(\'compararSelecao\')">Comparar análises</button>';
   }
+  html += '<button class="btn btn-ghost" style="margin-bottom:14px;font-size:13px;color:var(--txt3)" onclick="gerarAnaliseExemplo()">Ver exemplo de relatório</button>';
+  swimmers.slice().sort(function(a,b){return a.nome.localeCompare(b.nome);}).forEach(function (s) {
+    html += '<div class="swimmer-item" onclick="nav(\'perfil\',{swimmerId:\'' + s.id + '\'})">' +
+      '<div class="swimmer-avatar">' + iniciais(s.nome) + '</div>' +
+      '<div class="swimmer-info"><div class="name">' + escapeHtml(s.nome) + '</div>' +
+      '<div class="meta">' + s.analises.length + ' análise' + (s.analises.length === 1 ? '' : 's') + '</div></div>' +
+      '<div class="chevron">›</div></div>';
+  });
   html += '<button class="fab" onclick="abrirNovoNadador()">+</button>';
   return html;
 }
@@ -1726,6 +1821,49 @@ function toggleSelecaoComparacao(swimmerId, analiseId) {
     sel.push({ swimmerId: swimmerId, analiseId: analiseId });
   }
   render();
+}
+
+// Cria um nadador e uma análise de exemplo (100m Livres, piscina 50m) com
+// valores realistas, para se poder ver o relatório completo sem ter de
+// inserir nada manualmente. Fica guardado como uma análise normal — pode
+// ser apagada como qualquer outra.
+function gerarAnaliseExemplo() {
+  const sw = createSwimmer('Exemplo (podes apagar)', 'F', '2010-05-12');
+  const dadosBrutos = {
+    // Partida (cronómetro absoluto desde o sinal)
+    partida_s: '0.68', takeoff_maos_s: '0.74', takeoff_pe_posterior_s: '0.79', takeoff_pe_anterior_s: '0.85',
+    tempo_entrada_maos_s: '1.22', distancia_entrada_m: '4.3', tempo_breakout_s: '5.6', distancia_breakout_m: '8.5',
+    aos_15m_s: '7.9',
+    // 1ª piscina (15-25 e 25-45)
+    tt_p1a: '12.6', tt_p1b: '20.9',
+    // viragem aos 50m: toque, saída (+15m), distância de breakout pós-viragem
+    tv_aprox_50: '23.4', tv_saida_50: '29.6', saida_dist_50: '9.2',
+    // 2ª piscina (65-75 e 75-95)
+    tt_p2a: '33.8', tt_p2b: '42.7',
+    // tempo da chegada (5m antes da parede final)
+    seg_chegada: '46.1',
+    tempo_total: '49.85',
+    // ciclos por percurso de 50m
+    ciclos_b50: '23', ciclos_b100: '22',
+    // ciclos por troço (15-25, 25-45, 65-75, 75-95)
+    nc_p1a: '5', nc_p1b: '8', nc_p2a: '4', nc_p2b: '8',
+    // ondulações
+    ond_partida: '5', ond_viragem_50: '4',
+    // respirações por percurso + chegada
+    resp_b50: '3', resp_b100: '4', resp_chegada_simnao: 'nao',
+  };
+
+  const tamanhoPiscina = 50, estilo = 'LIVRES', distancia = 100;
+  const metrics = calcularMetricas(estilo, distancia, dadosBrutos, tamanhoPiscina);
+  const analise = addAnalise(sw.id, {
+    estilo: estilo, distancia: distancia, tamanhoPiscina: tamanhoPiscina,
+    dadosBrutos: dadosBrutos, tempoTotal: metrics.tempoTotal,
+    dataProva: new Date().toISOString().slice(0, 10),
+  });
+
+  state.incluirOndulacoes = true;
+  state.incluirRespiracoes = true;
+  nav('relatorio', { swimmerId: sw.id, verAnaliseId: analise.id, compararPB: false });
 }
 
 function abrirNovoNadador() {
@@ -2189,6 +2327,7 @@ function fecharVideo() {
   state.video.objectUrl = null;
   state.video.tempoPartidaAbsoluto = null;
   state.video.indiceMarcacaoAtual = 0;
+  state.video.modo = 'tempos';
 }
 
 function onVideoFileSelected(input) {
@@ -2254,6 +2393,8 @@ function renderVideoMarkSection() {
   if (state.video.tempoPartidaAbsoluto === null) {
     html += '<div class="video-step-label">Avança até ao frame exato da partida (saída do nadador)</div>';
     html += '<button class="btn btn-primary" onclick="marcarPartidaVideo()">Marcar este frame como a Partida (t = 0)</button>';
+  } else if (state.video.modo === 'ciclos') {
+    html += renderVideoModoCiclos();
   } else {
     const pontos = listaPontosParaMarcar();
     html += '<div class="video-step-label">Marca cada ponto pela ordem, avançando o vídeo</div>';
@@ -2276,7 +2417,7 @@ function renderVideoMarkSection() {
       html += '</div></div>';
     });
     html += '</div>';
-    html += '<button class="btn btn-primary" style="margin-top:14px" onclick="concluirMarcacaoVideo()">Concluir e voltar ao formulário</button>';
+    html += '<button class="btn btn-primary" style="margin-top:14px" onclick="avancarParaCiclosNoVideo()">Continuar para ciclos →</button>';
   }
   const el = document.getElementById('videoMarkSection');
   if (!el) return;
@@ -2434,9 +2575,59 @@ function removerFocoAtivo() {
   }
 }
 
+// Avança do modo "tempos" (marcar por frame) para o modo "ciclos" dentro do
+// MESMO ecrã de vídeo, sem fechar o vídeo — porque contar braçadas/ondulações/
+// respirações exige continuar a ver o vídeo, só que aqui são números inseridos
+// manualmente (não há "marcar o frame exato" para uma contagem).
+function avancarParaCiclosNoVideo() {
+  state.video.modo = 'ciclos';
+  renderVideoMarkSection();
+}
+
+function renderVideoModoCiclos() {
+  const campos = gerarCamposInput(state.novaAnalise.estilo, state.novaAnalise.distancia, state.novaAnalise.tamanhoPiscina, state.incluirOndulacoes, state.incluirRespiracoes);
+  let html = '<div class="video-step-label">Conta enquanto vês o vídeo e preenche os números</div>';
+  html += '<div class="video-mark-list video-mark-list-ciclos">';
+  let currentSubgrupo = null;
+  campos.ciclos.forEach(function (campo) {
+    if (campo.isHeader) { currentSubgrupo = null; return; } // os cabeçalhos de grupo não fazem falta aqui, só há 1 grupo
+    if (campo.subgrupo && campo.subgrupo !== currentSubgrupo) {
+      currentSubgrupo = campo.subgrupo;
+      html += '<div class="video-ciclos-subdivider">' + escapeHtml(campo.subgrupo) + '</div>';
+    } else if (!campo.subgrupo) {
+      currentSubgrupo = null;
+    }
+    const val = state.formData[campo.id] !== undefined ? state.formData[campo.id] : '';
+    if (campo.tipo === 'boolean') {
+      const marcado = val === 'sim';
+      html += '<div class="video-mark-item">' +
+        '<div class="vm-label">' + escapeHtml(campo.label) + '</div>' +
+        '<label class="switch"><input type="checkbox" ' + (marcado ? 'checked' : '') + ' onchange="onBooleanInput(this, \'' + campo.id + '\')"><span class="slider"></span></label>' +
+        '</div>';
+    } else {
+      html += '<div class="video-mark-item">' +
+        '<div class="vm-label">' + escapeHtml(campo.label) + (campo.sub ? '<span class="vm-sub">' + escapeHtml(campo.sub) + '</span>' : '') + '</div>' +
+        '<input type="text" inputmode="decimal" class="video-ciclos-input" value="' + val + '" data-field="' + campo.id + '" oninput="onFormInput(this)">' +
+        '<div class="ir-unit">' + campo.unidade + '</div>' +
+        '</div>';
+    }
+  });
+  html += '</div>';
+  html += '<div class="btn-row" style="margin-top:14px">';
+  html += '<button class="btn btn-ghost" onclick="voltarParaTemposNoVideo()">← Voltar aos tempos</button>';
+  html += '<button class="btn btn-primary" onclick="concluirMarcacaoVideo()">Concluir análise</button>';
+  html += '</div>';
+  return html;
+}
+
+function voltarParaTemposNoVideo() {
+  state.video.modo = 'tempos';
+  renderVideoMarkSection();
+}
+
 function concluirMarcacaoVideo() {
   fecharVideo();
-  state.formStep = 'tempos';
+  state.formStep = 'ciclos';
   nav('formulario');
 }
 
@@ -2862,20 +3053,23 @@ function renderRelatorio() {
   const dataDaProva = an.dataProva || an.criadoEm;
   const idadeNaProva = calcularIdade(sw.dataNascimento, dataDaProva);
 
+  const provaLabel = ESTILOS_LABEL(an.estilo) + ' ' + an.distancia + 'm · piscina ' + (an.tamanhoPiscina || 50) + 'm';
   let infoLinha = [fmtData(dataDaProva)];
   if (sw.sexo) infoLinha.push(fmtSexo(sw.sexo));
   if (idadeNaProva) infoLinha.push(fmtIdade(idadeNaProva));
 
-  let html = '<div class="report-header">' +
-    '<div class="total-time">' + fmtTempo(metrics.tempoTotal) + '</div>' +
-    '<div class="total-label">Tempo total · ' + infoLinha.join(' · ') + '</div>';
+  let html = '<div class="rep-header">' +
+    '<div class="rep-swimmer-name">' + escapeHtml(sw.nome) + '</div>' +
+    '<div class="rep-prova-label">' + escapeHtml(provaLabel) + '</div>' +
+    '<div class="rep-time">' + fmtTempo(metrics.tempoTotal) + '</div>' +
+    '<div class="rep-sub">' + escapeHtml(infoLinha.join(' · ')) + '</div>';
   if (temOutras) {
-    html += éPB ? '<div class="pb-badge">Melhor registo nesta prova</div>' : '<div class="tag" style="margin-top:8px">Melhor registo: ' + fmtTempo(melhor.tempoTotal) + '</div>';
+    html += éPB ? '<div class="rep-pb">Melhor registo nesta prova</div>' : '<div class="rep-sub" style="margin-top:8px">Melhor registo: ' + fmtTempo(melhor.tempoTotal) + '</div>';
   }
   html += '</div>';
 
   if (temOutras) {
-    html += '<div class="compare-toggle"><div><div class="ct-label">Comparar com melhor registo</div>' +
+    html += '<div class="rep-toggle"><div><div class="ct-label">Comparar com melhor registo</div>' +
       '<div class="ct-sub">Sobrepõe o melhor resultado histórico nos gráficos</div></div>' +
       '<label class="switch"><input type="checkbox" ' + (state.compararPB ? 'checked' : '') + ' onchange="toggleComparar(this.checked)"><span class="slider"></span></label></div>';
   }
@@ -2884,12 +3078,12 @@ function renderRelatorio() {
 
   html += '<div id="chartsContainer">' + renderGraficos(an, metrics, metricsPB) + '</div>';
 
-  html += '<button class="btn btn-ghost" style="margin-top:6px" onclick="editarAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Editar dados desta análise</button>';
-  html += '<div class="btn-row" style="margin-top:10px">' +
-    '<button class="btn btn-primary" onclick="confirmarGuardarRelatorio()">Guardar</button>' +
-    '<button class="btn btn-ghost" onclick="exportarRelatorio()">Exportar</button>' +
+  html += '<button class="rep-btn rep-btn-ghost" onclick="editarAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Editar dados desta análise</button>';
+  html += '<div style="display:flex;gap:10px;margin-top:10px">' +
+    '<button class="rep-btn rep-btn-primary" style="margin-top:0" onclick="confirmarGuardarRelatorio()">Guardar</button>' +
+    '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="exportarRelatorio()">Exportar</button>' +
     '</div>';
-  html += '<button class="btn btn-ghost" style="margin-top:10px;border-color:rgba(239,68,68,0.3);color:#f29999" onclick="apagarAnaliseAtual()">Apagar esta análise</button>';
+  html += '<button class="rep-btn rep-btn-danger" onclick="apagarAnaliseAtual()">Apagar esta análise</button>';
 
   return html;
 }
@@ -2935,8 +3129,8 @@ function renderGraficos(an, m, mPB) {
     html += chartCard('chart_resp', 'Respirações', 'contagem por troço');
   }
   if (m.respirouNaChegada !== null) {
-    html += '<div class="chart-card"><div class="ct-title">Respiração na chegada</div><div class="ct-desc">Últimos 5m antes de tocar na parede</div>' +
-      '<div class="input-row"><div class="ir-label">Respirou nos últimos 5m</div><div style="font-weight:700">' + (m.respirouNaChegada ? 'Sim' : 'Não') + '</div></div></div>';
+    html += '<div class="rep-card"><div class="rep-card-title">Respiração na chegada</div><div class="rep-card-desc">Últimos 5m antes de tocar na parede</div>' +
+      '<div class="rep-row"><div class="rep-row-label">Respirou nos últimos 5m</div><div class="rep-row-value">' + (m.respirouNaChegada ? 'Sim' : 'Não') + '</div></div></div>';
   }
 
   html += chartCard('chart_parc50', 'Parciais a cada 50m', 'tempo de cada parcial (s)');
@@ -2945,41 +3139,41 @@ function renderGraficos(an, m, mPB) {
   }
 
   // --- Partida (tabela simples, não gráfico) ---
-  html += '<div class="chart-card"><div class="ct-title">Partida</div><div class="ct-desc">Valores cronometrados na saída</div>';
+  html += '<div class="rep-card"><div class="rep-card-title">Partida</div><div class="rep-card-desc">Valores cronometrados na saída</div>';
   const estiloPartida = an.isMedley || an.estilo === 'ESTILOS' ? 'MARIPOSA' : an.estilo;
   const camposPartida = familiaPartida(estiloPartida);
   camposPartida.forEach(function (c) {
     const v = m.partida[c.id];
     const vPB = mPB ? mPB.partida[c.id] : null;
-    html += '<div class="input-row" style="margin-bottom:6px"><div class="ir-label">' + c.label + '</div>' +
-      '<div style="font-weight:700;font-variant-numeric:tabular-nums">' + (v !== null && v !== undefined ? v + ' ' + c.unidade : '—') +
-      (vPB !== null && vPB !== undefined ? '<span style="font-size:11px;color:var(--gold);margin-left:8px">PB: ' + vPB + '</span>' : '') + '</div></div>';
+    html += '<div class="rep-row"><div class="rep-row-label">' + c.label + '</div>' +
+      '<div class="rep-row-value">' + (v !== null && v !== undefined ? v + ' ' + c.unidade : '—') +
+      (vPB !== null && vPB !== undefined ? '<span class="rep-row-pb">PB: ' + vPB + '</span>' : '') + '</div></div>';
     // duração de voo é calculada (não inserida) e aparece logo após o campo de entrada das mãos
     if (c.id === 'tempo_entrada_maos_s') {
       const voo = m.partida.duracao_voo_s, vooPB = mPB ? mPB.partida.duracao_voo_s : null;
-      html += '<div class="input-row" style="margin-bottom:6px"><div class="ir-label">Duração de voo</div>' +
-        '<div style="font-weight:700;font-variant-numeric:tabular-nums">' + (voo !== null && voo !== undefined ? fmtNum(voo, 2, ' s') : '—') +
-        (vooPB !== null && vooPB !== undefined ? '<span style="font-size:11px;color:var(--gold);margin-left:8px">PB: ' + fmtNum(vooPB, 2, ' s') + '</span>' : '') + '</div></div>';
+      html += '<div class="rep-row"><div class="rep-row-label">Duração de voo</div>' +
+        '<div class="rep-row-value">' + (voo !== null && voo !== undefined ? fmtNum(voo, 2, ' s') : '—') +
+        (vooPB !== null && vooPB !== undefined ? '<span class="rep-row-pb">PB: ' + fmtNum(vooPB, 2, ' s') + '</span>' : '') + '</div></div>';
     }
   });
   html += '</div>';
 
   if (m.seg50) {
-    html += '<div class="chart-card"><div class="ct-title">Segmentos da prova (50m)</div><div class="ct-desc">Divisão em três fases</div>' +
-      '<div class="input-row" style="margin-bottom:6px"><div class="ir-label">Até aos 15m</div><div style="font-weight:700">' + fmtTempo(m.seg50.ate15m) + '</div></div>' +
-      '<div class="input-row" style="margin-bottom:6px"><div class="ir-label">Nado (15m–45m)</div><div style="font-weight:700">' + fmtTempo(m.seg50.nadoCentral) + '</div></div>' +
-      '<div class="input-row"><div class="ir-label">Chegada (últimos 5m)</div><div style="font-weight:700">' + fmtTempo(m.seg50.chegada) + '</div></div></div>';
+    html += '<div class="rep-card"><div class="rep-card-title">Segmentos da prova (50m)</div><div class="rep-card-desc">Divisão em três fases</div>' +
+      '<div class="rep-row"><div class="rep-row-label">Até aos 15m</div><div class="rep-row-value">' + fmtTempo(m.seg50.ate15m) + '</div></div>' +
+      '<div class="rep-row"><div class="rep-row-label">Nado (15m–45m)</div><div class="rep-row-value">' + fmtTempo(m.seg50.nadoCentral) + '</div></div>' +
+      '<div class="rep-row"><div class="rep-row-label">Chegada (últimos 5m)</div><div class="rep-row-value">' + fmtTempo(m.seg50.chegada) + '</div></div></div>';
   } else if (m.tempoChegada5m !== null) {
     const chegadaPB = mPB ? mPB.tempoChegada5m : null;
-    html += '<div class="chart-card"><div class="ct-title">Chegada</div><div class="ct-desc">Tempo dos últimos 5m antes de tocar na parede</div>' +
-      '<div class="input-row"><div class="ir-label">Últimos 5m</div><div style="font-weight:700">' + fmtTempo(m.tempoChegada5m) +
-      (chegadaPB !== null ? '<span style="font-size:11px;color:var(--gold);margin-left:8px">PB: ' + fmtTempo(chegadaPB) + '</span>' : '') + '</div></div></div>';
+    html += '<div class="rep-card"><div class="rep-card-title">Chegada</div><div class="rep-card-desc">Tempo dos últimos 5m antes de tocar na parede</div>' +
+      '<div class="rep-row"><div class="rep-row-label">Últimos 5m</div><div class="rep-row-value">' + fmtTempo(m.tempoChegada5m) +
+      (chegadaPB !== null ? '<span class="rep-row-pb">PB: ' + fmtTempo(chegadaPB) + '</span>' : '') + '</div></div></div>';
   }
 
   if (m.mediaParcial50 !== null || m.mediaParcial100 !== null) {
-    html += '<div class="chart-card"><div class="ct-title">Médias de parciais</div><div class="ct-desc">Referência para regularidade de ritmo</div>';
-    if (m.mediaParcial50 !== null) html += '<div class="input-row" style="margin-bottom:6px"><div class="ir-label">Média parcial 50m</div><div style="font-weight:700">' + fmtTempo(m.mediaParcial50) + '</div></div>';
-    if (m.mediaParcial100 !== null) html += '<div class="input-row"><div class="ir-label">Média parcial 100m</div><div style="font-weight:700">' + fmtTempo(m.mediaParcial100) + '</div></div>';
+    html += '<div class="rep-card"><div class="rep-card-title">Médias de parciais</div><div class="rep-card-desc">Referência para regularidade de ritmo</div>';
+    if (m.mediaParcial50 !== null) html += '<div class="rep-row"><div class="rep-row-label">Média parcial 50m</div><div class="rep-row-value">' + fmtTempo(m.mediaParcial50) + '</div></div>';
+    if (m.mediaParcial100 !== null) html += '<div class="rep-row"><div class="rep-row-label">Média parcial 100m</div><div class="rep-row-value">' + fmtTempo(m.mediaParcial100) + '</div></div>';
     html += '</div>';
   }
 
@@ -2987,7 +3181,7 @@ function renderGraficos(an, m, mPB) {
 }
 
 function chartCard(id, title, desc) {
-  return '<div class="chart-card"><div class="ct-title">' + title + '</div><div class="ct-desc">' + desc + '</div><canvas id="' + id + '"></canvas></div>';
+  return '<div class="rep-card"><div class="rep-card-title">' + title + '</div><div class="rep-card-desc">' + desc + '</div><canvas id="' + id + '"></canvas></div>';
 }
 
 /* ---------- ECRÃ: relatório comparativo (2 análises, mesmo ou diferente nadador) ---------- */
@@ -3008,20 +3202,22 @@ function renderCompararRelatorio() {
   const mesmoNadador = item1.swimmer.id === item2.swimmer.id;
   const label1 = mesmoNadador ? (nome1 + ' · ' + fmtData(item1.analise.dataProva || item1.analise.criadoEm)) : nome1;
   const label2 = mesmoNadador ? (nome2 + ' · ' + fmtData(item2.analise.dataProva || item2.analise.criadoEm)) : nome2;
+  const provaLabel = ESTILOS_LABEL(item1.analise.estilo) + ' ' + item1.analise.distancia + 'm · piscina ' + (item1.analise.tamanhoPiscina || 50) + 'm';
 
-  let html = '<div class="report-header">';
-  html += '<div style="display:flex;justify-content:center;gap:24px;align-items:center">';
-  html += '<div style="text-align:center"><div class="total-time" style="font-size:28px' + (maisRapida===1?';color:var(--green)':'') + '">' + fmtTempo(m1.tempoTotal) + '</div><div class="total-label">' + escapeHtml(label1) + '</div></div>';
-  html += '<div style="color:var(--txt3);font-size:13px">vs</div>';
-  html += '<div style="text-align:center"><div class="total-time" style="font-size:28px' + (maisRapida===2?';color:var(--green)':'') + '">' + fmtTempo(m2.tempoTotal) + '</div><div class="total-label">' + escapeHtml(label2) + '</div></div>';
+  let html = '<div class="rep-header">';
+  html += '<div class="rep-prova-label" style="text-align:center;margin-bottom:12px">' + escapeHtml(provaLabel) + '</div>';
+  html += '<div class="rep-vs-header">';
+  html += '<div class="rep-vs-side"><div class="rep-vs-name">' + escapeHtml(label1) + '</div><div class="rep-vs-time' + (maisRapida===1?' is-winner':'') + '">' + fmtTempo(m1.tempoTotal) + '</div></div>';
+  html += '<div class="rep-vs-sep">VS</div>';
+  html += '<div class="rep-vs-side"><div class="rep-vs-name">' + escapeHtml(label2) + '</div><div class="rep-vs-time' + (maisRapida===2?' is-winner':'') + '">' + fmtTempo(m2.tempoTotal) + '</div></div>';
   html += '</div>';
   const diff = Math.abs(m1.tempoTotal - m2.tempoTotal);
-  html += '<div class="tag" style="margin-top:10px">Diferença: ' + fmtTempo(diff) + '</div>';
+  html += '<div class="rep-diff">Diferença: ' + fmtTempo(diff) + '</div>';
   html += '</div>';
 
   html += '<div id="chartsContainer">' + renderGraficos(item1.analise, m1, m2) + '</div>';
 
-  html += '<button class="btn btn-ghost" style="margin-top:10px" onclick="state.comparacao.selecionadas=[];nav(\'compararSelecao\')">Nova comparação</button>';
+  html += '<button class="rep-btn rep-btn-ghost" onclick="state.comparacao.selecionadas=[];nav(\'compararSelecao\')">Nova comparação</button>';
 
   return html;
 }
@@ -3062,36 +3258,49 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
   chartInstances.forEach(function (c) { c.destroy(); });
   chartInstances = [];
 
-  const cssVar = function (name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); };
-  const colAccent = cssVar('--accent') || '#00b4d8';
-  const colGreen = cssVar('--green') || '#2dd4a0';
-  const colGold = cssVar('--gold') || '#ffd166';
-  const colTxt2 = cssVar('--txt2') || '#8ab4c8';
-  const colBorder = cssVar('--border') || 'rgba(0,180,216,0.12)';
+  // O relatório usa sempre uma paleta fixa clara (azul da app + laranja do
+  // Swimmin), independente do tema dark/light geral da aplicação — para que
+  // o relatório funcione como um "cartão" pronto a exportar/partilhar.
+  const colAccent = '#0096c7';   // azul principal (1ª série / análise única)
+  const colGold = '#f4762a';     // laranja (2ª série / comparação ou PB)
+  const colTxt2 = '#5b6b78';
+  const colBorder = '#e3e7eb';
   Chart.defaults.color = colTxt2;
   Chart.defaults.font.size = 11;
   Chart.defaults.borderColor = colBorder;
-  if (window.ChartDataLabels) { try { Chart.unregister(window.ChartDataLabels); } catch (e) {} }
+  if (window.ChartDataLabels) { try { Chart.register(window.ChartDataLabels); } catch (e) {} }
 
   function mkLineBar(canvasId, labels, dataset, datasetPB, type, unidade, opts) {
     opts = opts || {};
     const formatador = opts.formatador || fmtEixo;
     const beginAtZero = opts.beginAtZero !== undefined ? opts.beginAtZero : false;
-    const mostrarValores = !!opts.mostrarValores;
+    // Por defeito mostramos sempre os valores em cima dos pontos/barras —
+    // é a marca visual do estilo "cartão de Instagram" que queremos.
+    const mostrarValores = opts.mostrarValores !== false;
     const el = document.getElementById(canvasId);
     if (!el) return;
     const datasets = [{
-      label: labelSerie1, data: dataset, backgroundColor: type === 'bar' ? colAccent : 'rgba(0,180,216,0.15)',
-      borderColor: colAccent, borderWidth: 2, borderRadius: 4, tension: 0.3, pointRadius: 3, fill: type === 'line',
+      label: labelSerie1, data: dataset,
+      backgroundColor: type === 'bar' ? colAccent : 'rgba(0,150,199,0.10)',
+      borderColor: colAccent, borderWidth: type === 'bar' ? 0 : 3,
+      borderRadius: type === 'bar' ? { topLeft: 10, topRight: 10, bottomLeft: 0, bottomRight: 0 } : 0, borderSkipped: 'bottom',
+      tension: 0.35, pointRadius: type === 'line' ? 4 : 0, pointBackgroundColor: colAccent,
+      pointBorderColor: '#ffffff', pointBorderWidth: 2, fill: type === 'line',
+      barPercentage: 0.62, categoryPercentage: 0.8,
     }];
     if (datasetPB) {
       datasets.push({
-        label: labelSerie2, data: datasetPB, backgroundColor: 'rgba(255,209,102,0.12)',
-        borderColor: colGold, borderWidth: 2, borderDash: [5,4], borderRadius: 4, tension: 0.3, pointRadius: 3, fill: false,
+        label: labelSerie2, data: datasetPB,
+        backgroundColor: type === 'bar' ? colGold : 'rgba(244,118,42,0.10)',
+        borderColor: colGold, borderWidth: type === 'bar' ? 0 : 3,
+        borderRadius: type === 'bar' ? { topLeft: 10, topRight: 10, bottomLeft: 0, bottomRight: 0 } : 0, borderSkipped: 'bottom',
+        tension: 0.35, pointRadius: type === 'line' ? 4 : 0, pointBackgroundColor: colGold,
+        pointBorderColor: '#ffffff', pointBorderWidth: 2, fill: type === 'line',
+        barPercentage: 0.62, categoryPercentage: 0.8,
       });
     }
     const plugins = {
-      legend: { display: !!datasetPB, labels: { boxWidth: 12, font: { size: 11 } } },
+      legend: { display: !!datasetPB, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, padding: 14, font: { size: 11, weight: '700' }, color: '#14202b' } },
       tooltip: { callbacks: { label: function (ctx) {
         const v = ctx.parsed.y;
         return ctx.dataset.label + ': ' + formatador(v) + (unidade || '');
@@ -3099,23 +3308,28 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
     };
     if (mostrarValores && window.ChartDataLabels) {
       plugins.datalabels = {
-        color: '#04141f', anchor: 'center', align: 'center', font: { size: 11, weight: '700' },
+        color: function (ctx) { return ctx.dataset.borderColor || colAccent; },
+        anchor: type === 'line' ? 'end' : 'end',
+        align: type === 'line' ? 'top' : 'end',
+        offset: type === 'bar' ? 4 : 6,
+        font: { size: 12, weight: '800' },
         formatter: function (v) { return v === null || v === undefined ? '' : formatador(v) + (unidade || ''); },
       };
     }
+    el.style.height = '230px';
+    el.style.display = 'block';
     const c = new Chart(el, {
       type: type, data: { labels: labels, datasets: datasets },
-      plugins: (mostrarValores && window.ChartDataLabels) ? [window.ChartDataLabels] : [],
       options: {
         responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 18 } },
         plugins: plugins,
         scales: {
-          y: { beginAtZero: beginAtZero, ticks: { callback: function (v) { return formatador(v) + (unidade || ''); } } },
-          x: { ticks: { font: { size: 10 } } },
+          y: { beginAtZero: beginAtZero, grid: { color: '#eef1f4' }, ticks: { color: '#93a1ac', callback: function (v) { return formatador(v) + (unidade || ''); } } },
+          x: { grid: { display: false }, ticks: { color: '#5b6b78', font: { size: 10, weight: '700' } } },
         },
       },
     });
-    el.style.height = '220px';
     chartInstances.push(c);
   }
 
