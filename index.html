@@ -144,6 +144,25 @@ html, body { transition: background-color .2s ease, color .2s ease; }
 .rep-btn-ghost { background: var(--rep-card); color: var(--rep-blue2); border: 1px solid var(--rep-border); }
 .rep-btn-danger { background: var(--rep-card); color: #b3261e; border: 1px solid #f3c8c4; }
 
+.rep-card-clickable { cursor: pointer; }
+.rep-card-clickable:active { background: var(--rep-bg2); }
+
+.chart-fullscreen-overlay {
+  position: fixed; inset: 0; background: #ffffff; z-index: 400;
+  display: flex; flex-direction: column;
+}
+.chart-fullscreen-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 16px 18px; border-bottom: 1px solid var(--rep-border); flex-shrink: 0;
+}
+.chart-fullscreen-title { font-size: 17px; font-weight: 800; color: var(--rep-blue2); }
+.chart-fullscreen-close {
+  background: var(--rep-bg2); border: 1px solid var(--rep-border); color: var(--rep-txt);
+  width: 38px; height: 38px; border-radius: 10px; font-size: 16px; flex-shrink: 0;
+}
+.chart-fullscreen-body { flex: 1; padding: 18px; min-height: 0; }
+.chart-fullscreen-body canvas { width: 100% !important; height: 100% !important; }
+
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { background: var(--bg); color: var(--txt); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100%; overflow-x: hidden; }
@@ -249,9 +268,9 @@ input, select { font-family: inherit; }
 .dist-card.selected { border-color: var(--accent); background: rgba(0,180,216,0.12); color: var(--accent3); }
 
 /* ───── INPUT SEQUENCIAL ───── */
-.progress-bar { height: 4px; background: var(--bg3); border-radius: 4px; overflow: hidden; margin-bottom: 18px; }
-.progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--green)); transition: width .25s; }
-.step-label { font-size: 12px; color: var(--txt3); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; }
+.form-tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg3); border-radius: var(--radius-sm); padding: 4px; }
+.form-tab { flex: 1; background: transparent; border: none; color: var(--txt3); font-size: 12px; font-weight: 600; padding: 8px 4px; border-radius: 6px; }
+.form-tab.active { background: var(--card); color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
 .step-title { font-size: 19px; font-weight: 700; margin-bottom: 14px; }
 .input-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .input-row {
@@ -299,6 +318,12 @@ input, select { font-family: inherit; }
 .compare-toggle .ct-label { font-size: 14px; font-weight: 600; }
 .compare-toggle .ct-sub { font-size: 12px; color: var(--txt3); margin-top: 2px; }
 .switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+.bool-toggle { display: flex; gap: 6px; flex-shrink: 0; }
+.bool-opt {
+  background: var(--bg3); border: 1px solid var(--border2); color: var(--txt2);
+  border-radius: var(--radius-sm); padding: 8px 16px; font-size: 13px; font-weight: 700;
+}
+.bool-opt.selected { background: var(--accent2); border-color: var(--accent); color: #04141f; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .switch .slider {
   position: absolute; inset: 0; background: var(--bg3); border: 1px solid var(--border);
@@ -476,13 +501,13 @@ html:not(.light-mode) input[type="date"] { color-scheme: dark; }
 .calib-header .ch-title { font-size: 14px; font-weight: 700; }
 .calib-header .ch-close { background: var(--card2); border: 1px solid var(--border); color: var(--txt2); border-radius: 8px; width: 32px; height: 32px; }
 .calib-frame-wrap { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.calib-frame-wrap video { max-width: 100%; max-height: 100%; }
-.calib-frame-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.calib-frame-wrap video { max-width: 100%; max-height: 100%; transform-origin: center center; }
+.calib-frame-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; transform-origin: center center; }
 .calib-point { fill: var(--gold); stroke: #04141f; stroke-width: 0.15; cursor: grab; }
 .calib-line-yellow { stroke: #ffd166; }
-.calib-line-red { stroke: #ef4444; }
-.calib-line-red-ext { stroke: #ef4444; opacity: 0.35; stroke-dasharray: 0.8 0.8; }
-.calib-swimmer-dot { fill: #ef4444; stroke: white; stroke-width: 0.15; cursor: grab; }
+.calib-line-red { stroke: #ef4444; opacity: 0.5; }
+.calib-line-red-ext { stroke: #ef4444; opacity: 0.2; stroke-dasharray: 0.8 0.8; }
+.calib-swimmer-dot { fill: #ef4444; stroke: white; stroke-width: 0.15; cursor: grab; opacity: 0.5; }
 .calib-footer { padding: 18px 16px 20px; border-top: 1px solid var(--border); background: var(--bg2); min-height: 168px; box-sizing: border-box; }
 .calib-instruction { font-size: 15px; color: var(--txt); margin-bottom: 4px; line-height: 1.45; font-weight: 600; }
 .calib-instruction-sub { font-size: 13px; color: var(--txt3); margin-bottom: 14px; }
@@ -524,6 +549,7 @@ html:not(.light-mode) input[type="date"] { color-scheme: dark; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 /* ============================================================
    SWIM ANALYSIS — MOTOR DE REGRAS
@@ -586,14 +612,14 @@ function gerarTroçosPiscinaLimpa(distanciaTotal, tamanhoPiscina, offset) {
     troços.push({
       id: 'p1', baseadoNoBreakout: true,
       campoBreakoutDist: 'distancia_breakout_m', campoBreakoutTempo: 'tempo_breakout_s',
-      fimParede: 25 + offset, label: 'breakout até aos ' + (25+offset) + 'm',
+      fimParede: 25 + offset, label: offset + '-' + (25+offset) + 'm',
     });
     for (let i = 1; i <= numViragens; i++) {
       const viragemEm = i * 25;
       troços.push({
         id: 'p' + (i + 1), baseadoNoBreakout: true,
         campoBreakoutDist: 'saida_dist_' + (viragemEm + offset), campoBreakoutTempo: 'tv_saida_' + (viragemEm + offset),
-        fimParede: viragemEm + 25 + offset, label: 'breakout até aos ' + (viragemEm + 25 + offset) + 'm',
+        fimParede: viragemEm + 25 + offset, label: (viragemEm + offset) + '-' + (viragemEm + 25 + offset) + 'm',
         apósViragemEm: viragemEm + offset,
       });
     }
@@ -1618,10 +1644,11 @@ const state = {
   calibDistancia: {
     ativo: false,           // true quando o overlay de calibração de distância está aberto
     campoDestino: null,     // id do campo de distância (formData) a preencher
-    passo: 'linha1_esq',    // 'linha1_esq' | 'linha1_dir' | 'linha2_esq' | 'linha2_dir' | 'ajustar'
+    passo: 'zoom',          // 'zoom' | 'linha1_metro' | 'linha1_esq' | 'linha1_dir' | 'linha2_metro' | 'linha2_esq' | 'linha2_dir' | 'ajustar'
     linha1: { metros: null, esq: null, dir: null }, // pontos em coordenadas relativas (0-1) ao frame do vídeo
     linha2: { metros: null, esq: null, dir: null },
     t: 0.5, // posição da bolinha ao longo da linha vermelha (0 = linha1, 1 = linha2)
+    zoom: 1, panX: 0, panY: 0, // ampliação fixada ANTES de começar a marcar; não muda durante a marcação
   },
 };
 
@@ -1727,7 +1754,6 @@ function renderListaNadadores() {
       '<div class="meta">' + s.analises.length + ' análise' + (s.analises.length === 1 ? '' : 's') + '</div></div>' +
       '<div class="chevron">›</div></div>';
   });
-  html += '<button class="fab" onclick="abrirNovoNadador()">+</button>';
   return html;
 }
 
@@ -2085,10 +2111,21 @@ function renderFormulario() {
 
   const campos = gerarCamposInput(state.novaAnalise.estilo, state.novaAnalise.distancia, state.novaAnalise.tamanhoPiscina, state.incluirOndulacoes, state.incluirRespiracoes);
   const lista = state.formStep === 'tempos' ? campos.tempos : campos.ciclos;
-  const progresso = state.formStep === 'tempos' ? 66 : 100;
 
-  let html = '<div class="progress-bar"><div class="progress-fill" style="width:' + progresso + '%"></div></div>';
-  html += '<div class="step-label">Passo ' + (state.formStep === 'tempos' ? '2 de 3' : '3 de 3') + '</div>';
+  // Tabs de navegação — clicáveis em qualquer direção, com flush automático
+  // dos valores visíveis antes de mudar de passo (evita perda de dados).
+  const tabs = [
+    { id: 'data', label: '1. Data e opções' },
+    { id: 'tempos', label: '2. Tempos' },
+    { id: 'ciclos', label: '3. Ciclos' },
+  ];
+  let html = '<div class="form-tabs">';
+  tabs.forEach(function (tab) {
+    const isActive = state.formStep === tab.id;
+    html += '<button class="form-tab' + (isActive ? ' active' : '') + '" onclick="irParaPasso(\'' + tab.id + '\')">' + tab.label + '</button>';
+  });
+  html += '</div>';
+
   html += '<div class="step-title">' + (state.formStep === 'tempos' ? 'Tempos cronometrados' : 'Ciclos, ondulações e saídas') + '</div>';
 
   if (state.formStep === 'tempos') {
@@ -2118,11 +2155,12 @@ function renderFormulario() {
     const digitosIniciais = isTempo && val !== '' ? segundosParaDigitos(val) : '';
 
     if (isBoolean) {
-      const marcado = val === 'sim';
       html += '<div class="input-row">' +
         '<div class="ir-label">' + escapeHtml(campo.label) + (campo.sub ? '<span class="ir-sub">' + escapeHtml(campo.sub) + '</span>' : '') + '</div>' +
-        '<label class="switch"><input type="checkbox" ' + (marcado ? 'checked' : '') + ' onchange="onBooleanInput(this, \'' + campo.id + '\')"><span class="slider"></span></label>' +
-        '</div>';
+        '<div class="bool-toggle">' +
+        '<button type="button" class="bool-opt' + (val === 'sim' ? ' selected' : '') + '" onclick="onBooleanInput(\'' + campo.id + '\', \'sim\')">Sim</button>' +
+        '<button type="button" class="bool-opt' + (val === 'nao' ? ' selected' : '') + '" onclick="onBooleanInput(\'' + campo.id + '\', \'nao\')">Não</button>' +
+        '</div></div>';
       return;
     }
 
@@ -2147,8 +2185,18 @@ function renderFormulario() {
 }
 
 function renderFormularioData() {
-  let html = '<div class="progress-bar"><div class="progress-fill" style="width:33%"></div></div>';
-  html += '<div class="step-label">Passo 1 de 3</div>';
+  const tabs = [
+    { id: 'data', label: '1. Data e opções' },
+    { id: 'tempos', label: '2. Tempos' },
+    { id: 'ciclos', label: '3. Ciclos' },
+  ];
+  let html = '<div class="form-tabs">';
+  tabs.forEach(function (tab) {
+    const isActive = tab.id === 'data';
+    html += '<button class="form-tab' + (isActive ? ' active' : '') + '" onclick="irParaPasso(\'' + tab.id + '\')">' + tab.label + '</button>';
+  });
+  html += '</div>';
+
   html += '<div class="step-title">Data da prova</div>';
   html += '<div class="field"><label>Data da prova</label><input type="date" id="dataProvaInput" value="' + state.dataProva + '" oninput="onDataProvaInput(this)"></div>';
 
@@ -2177,6 +2225,7 @@ function onDataProvaInput(input) {
 
 function avancarParaTempos() {
   if (!state.dataProva) { toast('Indica a data da prova'); return; }
+  flushInputsVisiveis();
   state.formStep = 'tempos';
   render();
 }
@@ -2186,8 +2235,37 @@ function onFormInput(input) {
   state.formData[field] = input.value;
 }
 
-function onBooleanInput(input, fieldId) {
-  state.formData[fieldId] = input.checked ? 'sim' : 'nao';
+function onBooleanInput(fieldId, valor) {
+  // Fazer flush de todos os inputs de texto visíveis antes de atualizar o
+  // estado — evita que valores ainda por guardar desapareçam quando o
+  // render() reconstrói o formulário.
+  flushInputsVisiveis();
+  state.formData[fieldId] = valor;
+  if (state.screen === 'marcarVideo') {
+    renderVideoMarkSection();
+  } else {
+    render();
+  }
+}
+
+// Lê todos os inputs de texto/número visíveis no DOM e garante que os seus
+// valores estão guardados em state.formData, mesmo que o utilizador não
+// tenha saído do campo (o evento 'oninput' pode não ter disparado ainda).
+function flushInputsVisiveis() {
+  document.querySelectorAll('input[data-field]').forEach(function (el) {
+    const field = el.dataset.field;
+    if (!field) return;
+    if (el.dataset.rawValue !== undefined) {
+      // campo de tempo: usar o rawValue que já está processado
+      if (el.dataset.rawValue !== '' && state.formData[field] === undefined) {
+        state.formData[field] = el.dataset.rawValue;
+      }
+    } else {
+      if (el.value !== '' && state.formData[field] === undefined) {
+        state.formData[field] = el.value;
+      }
+    }
+  });
 }
 
 // Campo de tempo "estilo cronómetro": o utilizador digita só dígitos em
@@ -2274,13 +2352,33 @@ function segundosParaDigitos(valorSegundos) {
 }
 
 function avancarParaCiclos() {
+  flushInputsVisiveis();
   state.formStep = 'ciclos';
+  render();
+}
+
+function irParaPasso(passo) {
+  if (passo === state.formStep) return; // já estamos aqui, nada a fazer
+  flushInputsVisiveis();
+  if (passo === 'data' && !state.dataProva) { toast('Indica a data da prova'); return; }
+  state.formStep = passo;
   render();
 }
 
 function guardarAnalise() {
   const estilo = state.novaAnalise.estilo, distancia = state.novaAnalise.distancia, tamanhoPiscina = state.novaAnalise.tamanhoPiscina;
   const metrics = calcularMetricas(estilo, distancia, state.formData, tamanhoPiscina);
+
+  const campos = gerarCamposInput(estilo, distancia, tamanhoPiscina, state.incluirOndulacoes, state.incluirRespiracoes);
+  const camposBooleanPorPreencher = campos.ciclos.filter(function (c) {
+    return c.tipo === 'boolean' && state.formData[c.id] === undefined;
+  });
+
+  if (camposBooleanPorPreencher.length) {
+    toast('Por preencher: ' + camposBooleanPorPreencher[0].label);
+    return;
+  }
+
   if (!metrics.tempoTotal) {
     showConfirm('Tempo total em falta', 'Não inseriste o tempo total da prova. Continuar mesmo assim?', function () {
       finalizarGuardarAnalise(estilo, distancia, metrics);
@@ -2599,11 +2697,12 @@ function renderVideoModoCiclos() {
     }
     const val = state.formData[campo.id] !== undefined ? state.formData[campo.id] : '';
     if (campo.tipo === 'boolean') {
-      const marcado = val === 'sim';
       html += '<div class="video-mark-item">' +
         '<div class="vm-label">' + escapeHtml(campo.label) + '</div>' +
-        '<label class="switch"><input type="checkbox" ' + (marcado ? 'checked' : '') + ' onchange="onBooleanInput(this, \'' + campo.id + '\')"><span class="slider"></span></label>' +
-        '</div>';
+        '<div class="bool-toggle">' +
+        '<button type="button" class="bool-opt' + (val === 'sim' ? ' selected' : '') + '" onclick="onBooleanInput(\'' + campo.id + '\', \'sim\')">Sim</button>' +
+        '<button type="button" class="bool-opt' + (val === 'nao' ? ' selected' : '') + '" onclick="onBooleanInput(\'' + campo.id + '\', \'nao\')">Não</button>' +
+        '</div></div>';
     } else {
       html += '<div class="video-mark-item">' +
         '<div class="vm-label">' + escapeHtml(campo.label) + (campo.sub ? '<span class="vm-sub">' + escapeHtml(campo.sub) + '</span>' : '') + '</div>' +
@@ -2758,10 +2857,11 @@ function abrirCalibracaoDistancia(campoId) {
   if (!v) return;
   v.pause();
   state.calibDistancia = {
-    ativo: true, campoDestino: campoId, passo: 'linha1_metro',
+    ativo: true, campoDestino: campoId, passo: 'zoom',
     linha1: { metros: null, esq: null, dir: null },
     linha2: { metros: null, esq: null, dir: null },
     t: 0.5,
+    zoom: 1, panX: 0, panY: 0,
   };
   renderCalibracaoOverlay();
 }
@@ -2804,6 +2904,7 @@ function renderCalibracaoOverlay() {
 
   renderCalibFooter();
   desenharCalibracaoSvg();
+  aplicarTransformZoomCalib();
 }
 
 // Atualiza só o conteúdo do footer (instruções, input de metro, resultado),
@@ -2814,6 +2915,7 @@ function renderCalibFooter() {
   if (!footer) return;
   const c = state.calibDistancia;
   const instrucoes = {
+    zoom: 'Amplia a imagem se precisares de ver melhor as marcas da corda. O zoom fica fixo depois de continuares.',
     linha1_metro: 'Indica a que metro corresponde a 1ª marca de referência que vais usar (ex: 20)',
     linha1_esq: 'Marca essa marca (' + c.linha1.metros + 'm) na corda ESQUERDA',
     linha1_dir: 'Agora marca a MESMA marca (' + c.linha1.metros + 'm) na corda DIREITA',
@@ -2824,7 +2926,16 @@ function renderCalibFooter() {
   };
 
   let html = '';
-  if (c.passo === 'linha1_metro' || c.passo === 'linha2_metro') {
+  if (c.passo === 'zoom') {
+    html += '<div class="calib-instruction">' + instrucoes.zoom + '</div>';
+    html += '<div class="video-zoom-controls" style="display:flex;margin-bottom:10px">' +
+      '<button onclick="ajustarZoomCalib(-0.5)">−</button>' +
+      '<span id="calibZoomLevelLabel">' + Math.round(c.zoom * 100) + '%</span>' +
+      '<button onclick="ajustarZoomCalib(0.5)">+</button>' +
+      '<button onclick="resetZoomCalib()" class="vz-reset">Repor</button>' +
+      '</div>';
+    html += '<button class="btn btn-primary" onclick="confirmarZoomCalib()">Continuar para marcação →</button>';
+  } else if (c.passo === 'linha1_metro' || c.passo === 'linha2_metro') {
     html += '<div class="calib-instruction">' + instrucoes[c.passo] + '</div>';
     const qual = c.passo === 'linha1_metro' ? 1 : 2;
     const valorAtual = qual === 1 ? c.linha1.metros : c.linha2.metros;
@@ -2847,6 +2958,39 @@ function renderCalibFooter() {
     setTimeout(function () { metroInput.focus(); }, 100);
     metroInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') confirmarMetroCalib(); });
   }
+}
+
+// Zoom é ajustável SÓ no passo inicial 'zoom' — depois de avançar para a
+// marcação dos pontos, fica fixo até essa medição terminar (ou ser fechada),
+// para os cliques continuarem coerentes com onde o utilizador via a imagem.
+function ajustarZoomCalib(delta) {
+  const c = state.calibDistancia;
+  c.zoom = Math.max(1, Math.min(4, c.zoom + delta));
+  if (c.zoom === 1) { c.panX = 0; c.panY = 0; }
+  aplicarTransformZoomCalib();
+  const label = document.getElementById('calibZoomLevelLabel');
+  if (label) label.textContent = Math.round(c.zoom * 100) + '%';
+}
+function resetZoomCalib() {
+  const c = state.calibDistancia;
+  c.zoom = 1; c.panX = 0; c.panY = 0;
+  aplicarTransformZoomCalib();
+  const label = document.getElementById('calibZoomLevelLabel');
+  if (label) label.textContent = '100%';
+}
+function aplicarTransformZoomCalib() {
+  const c = state.calibDistancia;
+  const wrap = document.getElementById('calibFrameWrap');
+  if (!wrap) return;
+  const transform = 'scale(' + c.zoom + ') translate(' + c.panX + 'px, ' + c.panY + 'px)';
+  const cv = document.getElementById('calibVideo');
+  const svg = document.getElementById('calibSvg');
+  if (cv) cv.style.transform = transform;
+  if (svg) svg.style.transform = transform;
+}
+function confirmarZoomCalib() {
+  state.calibDistancia.passo = 'linha1_metro';
+  renderCalibFooter();
 }
 
 function onCalibMetroInput(input, qual) {
@@ -2883,22 +3027,74 @@ function eventoParaFracao(evt) {
 function ligarInteracaoSvg() {
   const svg = document.getElementById('calibSvg');
   if (!svg) return;
+
+  // ---- Pinch-to-zoom e pan (SÓ durante o passo 'zoom') ----
+  // Depois de confirmarZoomCalib(), o passo muda e estes gestos ficam
+  // silenciosos (retornam imediatamente sem fazer nada).
+  let pinchDistInicial = null, zoomInicialCalib = 1;
+  let panAtivo = false, panInicioX = 0, panInicioY = 0, panInicioStateX = 0, panInicioStateY = 0;
+
+  function distToques(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  svg.addEventListener('touchstart', function (evt) {
+    if (state.calibDistancia.passo !== 'zoom') return;
+    if (evt.touches.length === 2) {
+      pinchDistInicial = distToques(evt.touches);
+      zoomInicialCalib = state.calibDistancia.zoom;
+      panAtivo = false;
+    } else if (evt.touches.length === 1 && state.calibDistancia.zoom > 1) {
+      panAtivo = true;
+      panInicioX = evt.touches[0].clientX;
+      panInicioY = evt.touches[0].clientY;
+      panInicioStateX = state.calibDistancia.panX;
+      panInicioStateY = state.calibDistancia.panY;
+    }
+  }, { passive: true });
+
+  svg.addEventListener('touchmove', function (evt) {
+    if (state.calibDistancia.passo !== 'zoom') return;
+    const c = state.calibDistancia;
+    if (evt.touches.length === 2 && pinchDistInicial) {
+      const fator = distToques(evt.touches) / pinchDistInicial;
+      c.zoom = Math.max(1, Math.min(4, zoomInicialCalib * fator));
+      if (c.zoom === 1) { c.panX = 0; c.panY = 0; }
+      aplicarTransformZoomCalib();
+      const label = document.getElementById('calibZoomLevelLabel');
+      if (label) label.textContent = Math.round(c.zoom * 100) + '%';
+      evt.preventDefault();
+    } else if (panAtivo && evt.touches.length === 1) {
+      const dx = (evt.touches[0].clientX - panInicioX) / c.zoom;
+      const dy = (evt.touches[0].clientY - panInicioY) / c.zoom;
+      c.panX = panInicioStateX + dx;
+      c.panY = panInicioStateY + dy;
+      aplicarTransformZoomCalib();
+      evt.preventDefault();
+    }
+  }, { passive: false });
+
+  svg.addEventListener('touchend', function (evt) {
+    if (evt.touches.length < 2) pinchDistInicial = null;
+    if (evt.touches.length === 0) panAtivo = false;
+  }, { passive: true });
+
+  // ---- Clique para marcar pontos (todos os passos excepto 'zoom' e 'ajustar') ----
   svg.onclick = function (evt) {
     const c = state.calibDistancia;
+    if (c.passo === 'zoom') return; // durante o zoom não marca pontos
     const p = eventoParaFracao(evt);
     if (c.passo === 'linha1_esq') { c.linha1.esq = p; c.passo = 'linha1_dir'; }
     else if (c.passo === 'linha1_dir') { c.linha1.dir = p; c.passo = 'linha2_metro'; }
     else if (c.passo === 'linha2_esq') { c.linha2.esq = p; c.passo = 'linha2_dir'; }
     else if (c.passo === 'linha2_dir') { c.linha2.dir = p; c.passo = 'ajustar'; c.t = 0.5; }
-    else return; // 'ajustar' e os passos de input de metro não reagem a clique no SVG
+    else return;
     renderCalibracaoOverlay();
   };
 
-  // arrasto da bolinha vermelha, só ao longo da linha (passo 'ajustar').
-  // Usa Pointer Capture no próprio <svg> (que nunca é destruído durante o
-  // arrasto — só o seu innerHTML interno é atualizado a cada frame), em
-  // vez de no <circle> do nadador, que é recriado a cada desenharCalibracaoSvg()
-  // e por isso perderia a captura do ponteiro a meio do gesto.
+  // ---- Arrasto da bolinha vermelha (passo 'ajustar') ----
   let arrastando = false;
   svg.onpointerdown = function (evt) {
     if (state.calibDistancia.passo !== 'ajustar') return;
@@ -3081,7 +3277,8 @@ function renderRelatorio() {
   html += '<button class="rep-btn rep-btn-ghost" onclick="editarAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Editar dados desta análise</button>';
   html += '<div style="display:flex;gap:10px;margin-top:10px">' +
     '<button class="rep-btn rep-btn-primary" style="margin-top:0" onclick="confirmarGuardarRelatorio()">Guardar</button>' +
-    '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="exportarRelatorio()">Exportar</button>' +
+    '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="exportarRelatorio()">Imagem</button>' +
+    '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="exportarRelatorioPDF()">PDF</button>' +
     '</div>';
   html += '<button class="rep-btn rep-btn-danger" onclick="apagarAnaliseAtual()">Apagar esta análise</button>';
 
@@ -3106,7 +3303,10 @@ function apagarAnaliseAtual() {
   });
 }
 
-function renderGraficos(an, m, mPB) {
+function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
+  // defaults para o relatório normal (1 análise vs PB)
+  labelSerie1 = labelSerie1 || 'Atual';
+  labelSerie2 = labelSerie2 || 'Melhor registo';
   let html = '';
 
   // --- Velocidade, Frequência, Distância/ciclo por troço ---
@@ -3147,33 +3347,39 @@ function renderGraficos(an, m, mPB) {
     const vPB = mPB ? mPB.partida[c.id] : null;
     html += '<div class="rep-row"><div class="rep-row-label">' + c.label + '</div>' +
       '<div class="rep-row-value">' + (v !== null && v !== undefined ? v + ' ' + c.unidade : '—') +
-      (vPB !== null && vPB !== undefined ? '<span class="rep-row-pb">PB: ' + vPB + '</span>' : '') + '</div></div>';
-    // duração de voo é calculada (não inserida) e aparece logo após o campo de entrada das mãos
+      (vPB !== null && vPB !== undefined ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + vPB + '</span>' : '') + '</div></div>';
     if (c.id === 'tempo_entrada_maos_s') {
       const voo = m.partida.duracao_voo_s, vooPB = mPB ? mPB.partida.duracao_voo_s : null;
       html += '<div class="rep-row"><div class="rep-row-label">Duração de voo</div>' +
         '<div class="rep-row-value">' + (voo !== null && voo !== undefined ? fmtNum(voo, 2, ' s') : '—') +
-        (vooPB !== null && vooPB !== undefined ? '<span class="rep-row-pb">PB: ' + fmtNum(vooPB, 2, ' s') + '</span>' : '') + '</div></div>';
+        (vooPB !== null && vooPB !== undefined ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtNum(vooPB, 2, ' s') + '</span>' : '') + '</div></div>';
     }
   });
   html += '</div>';
 
   if (m.seg50) {
+    const seg50PB = mPB ? mPB.seg50 : null;
     html += '<div class="rep-card"><div class="rep-card-title">Segmentos da prova (50m)</div><div class="rep-card-desc">Divisão em três fases</div>' +
-      '<div class="rep-row"><div class="rep-row-label">Até aos 15m</div><div class="rep-row-value">' + fmtTempo(m.seg50.ate15m) + '</div></div>' +
-      '<div class="rep-row"><div class="rep-row-label">Nado (15m–45m)</div><div class="rep-row-value">' + fmtTempo(m.seg50.nadoCentral) + '</div></div>' +
-      '<div class="rep-row"><div class="rep-row-label">Chegada (últimos 5m)</div><div class="rep-row-value">' + fmtTempo(m.seg50.chegada) + '</div></div></div>';
+      '<div class="rep-row"><div class="rep-row-label">Até aos 15m</div><div class="rep-row-value">' + fmtTempo(m.seg50.ate15m) + (seg50PB ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtTempo(seg50PB.ate15m) + '</span>' : '') + '</div></div>' +
+      '<div class="rep-row"><div class="rep-row-label">Nado (15m–45m)</div><div class="rep-row-value">' + fmtTempo(m.seg50.nadoCentral) + (seg50PB ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtTempo(seg50PB.nadoCentral) + '</span>' : '') + '</div></div>' +
+      '<div class="rep-row"><div class="rep-row-label">Chegada (últimos 5m)</div><div class="rep-row-value">' + fmtTempo(m.seg50.chegada) + (seg50PB ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtTempo(seg50PB.chegada) + '</span>' : '') + '</div></div></div>';
   } else if (m.tempoChegada5m !== null) {
     const chegadaPB = mPB ? mPB.tempoChegada5m : null;
     html += '<div class="rep-card"><div class="rep-card-title">Chegada</div><div class="rep-card-desc">Tempo dos últimos 5m antes de tocar na parede</div>' +
       '<div class="rep-row"><div class="rep-row-label">Últimos 5m</div><div class="rep-row-value">' + fmtTempo(m.tempoChegada5m) +
-      (chegadaPB !== null ? '<span class="rep-row-pb">PB: ' + fmtTempo(chegadaPB) + '</span>' : '') + '</div></div></div>';
+      (chegadaPB !== null ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtTempo(chegadaPB) + '</span>' : '') + '</div></div></div>';
   }
 
   if (m.mediaParcial50 !== null || m.mediaParcial100 !== null) {
     html += '<div class="rep-card"><div class="rep-card-title">Médias de parciais</div><div class="rep-card-desc">Referência para regularidade de ritmo</div>';
-    if (m.mediaParcial50 !== null) html += '<div class="rep-row"><div class="rep-row-label">Média parcial 50m</div><div class="rep-row-value">' + fmtTempo(m.mediaParcial50) + '</div></div>';
-    if (m.mediaParcial100 !== null) html += '<div class="rep-row"><div class="rep-row-label">Média parcial 100m</div><div class="rep-row-value">' + fmtTempo(m.mediaParcial100) + '</div></div>';
+    if (m.mediaParcial50 !== null) {
+      html += '<div class="rep-row"><div class="rep-row-label">Média parcial 50m</div><div class="rep-row-value">' + fmtTempo(m.mediaParcial50) +
+        (mPB && mPB.mediaParcial50 !== null ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtTempo(mPB.mediaParcial50) + '</span>' : '') + '</div></div>';
+    }
+    if (m.mediaParcial100 !== null) {
+      html += '<div class="rep-row"><div class="rep-row-label">Média parcial 100m</div><div class="rep-row-value">' + fmtTempo(m.mediaParcial100) +
+        (mPB && mPB.mediaParcial100 !== null ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtTempo(mPB.mediaParcial100) + '</span>' : '') + '</div></div>';
+    }
     html += '</div>';
   }
 
@@ -3181,7 +3387,52 @@ function renderGraficos(an, m, mPB) {
 }
 
 function chartCard(id, title, desc) {
-  return '<div class="rep-card"><div class="rep-card-title">' + title + '</div><div class="rep-card-desc">' + desc + '</div><canvas id="' + id + '"></canvas></div>';
+  return '<div class="rep-card rep-card-clickable" onclick="abrirGraficoEcraInteiro(\'' + id + '\')">' +
+    '<div class="rep-card-title">' + title + '</div><div class="rep-card-desc">' + desc + '</div><canvas id="' + id + '"></canvas></div>';
+}
+
+// Abre o gráfico identificado por canvasId num overlay de ecrã inteiro,
+// recriando-o com a mesma configuração (dados, cores, formatação) já usada
+// no cartão original — é mais robusto do que mover o <canvas> existente,
+// que já tem uma instância Chart.js viva ligada a ele.
+function abrirGraficoEcraInteiro(canvasId) {
+  const instanciaOriginal = chartInstances.find(function (c) { return c.canvas && c.canvas.id === canvasId; });
+  if (!instanciaOriginal) return;
+  const tituloEl = document.getElementById(canvasId).closest('.rep-card').querySelector('.rep-card-title');
+  const titulo = tituloEl ? tituloEl.textContent : '';
+
+  let root = document.getElementById('chartFullscreenRoot');
+  if (!root) {
+    root = document.createElement('div');
+    root.id = 'chartFullscreenRoot';
+    document.body.appendChild(root);
+  }
+  root.innerHTML =
+    '<div class="chart-fullscreen-overlay">' +
+      '<div class="chart-fullscreen-header"><div class="chart-fullscreen-title">' + escapeHtml(titulo) + '</div>' +
+      '<button class="chart-fullscreen-close" onclick="fecharGraficoEcraInteiro()">✕</button></div>' +
+      '<div class="chart-fullscreen-body"><canvas id="chartFullscreenCanvas"></canvas></div>' +
+    '</div>';
+
+  const elFull = document.getElementById('chartFullscreenCanvas');
+  const configClonada = JSON.parse(JSON.stringify(instanciaOriginal.config.data));
+  // as funções (formatters, callbacks) perdem-se no JSON — reaplicamos as
+  // mesmas opções da instância original diretamente (sem passar por JSON).
+  const chartFull = new Chart(elFull, {
+    type: instanciaOriginal.config.type,
+    data: configClonada,
+    options: Object.assign({}, instanciaOriginal.config.options, { responsive: true, maintainAspectRatio: false }),
+  });
+  state.chartFullscreenInstance = chartFull;
+}
+
+function fecharGraficoEcraInteiro() {
+  if (state.chartFullscreenInstance) {
+    try { state.chartFullscreenInstance.destroy(); } catch (e) {}
+    state.chartFullscreenInstance = null;
+  }
+  const root = document.getElementById('chartFullscreenRoot');
+  if (root) root.innerHTML = '';
 }
 
 /* ---------- ECRÃ: relatório comparativo (2 análises, mesmo ou diferente nadador) ---------- */
@@ -3215,8 +3466,12 @@ function renderCompararRelatorio() {
   html += '<div class="rep-diff">Diferença: ' + fmtTempo(diff) + '</div>';
   html += '</div>';
 
-  html += '<div id="chartsContainer">' + renderGraficos(item1.analise, m1, m2) + '</div>';
+  html += '<div id="chartsContainer">' + renderGraficos(item1.analise, m1, m2, label1, label2) + '</div>';
 
+  html += '<div style="display:flex;gap:10px;margin-top:10px">' +
+    '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="exportarRelatorio()">Imagem</button>' +
+    '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="exportarRelatorioPDF()">PDF</button>' +
+    '</div>';
   html += '<button class="rep-btn rep-btn-ghost" onclick="state.comparacao.selecionadas=[];nav(\'compararSelecao\')">Nova comparação</button>';
 
   return html;
@@ -3309,11 +3564,18 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
     if (mostrarValores && window.ChartDataLabels) {
       plugins.datalabels = {
         color: function (ctx) { return ctx.dataset.borderColor || colAccent; },
-        anchor: type === 'line' ? 'end' : 'end',
-        align: type === 'line' ? 'top' : 'end',
-        offset: type === 'bar' ? 4 : 6,
-        font: { size: 12, weight: '800' },
+        anchor: 'end',
+        // Nas barras ambas as séries ficam em 'end' (acima da barra).
+        // Nas linhas, a 1ª série fica em cima do ponto e a 2ª fica em baixo,
+        // evitando que os números se sobreponham quando os valores são próximos.
+        align: type === 'line'
+          ? function (ctx) { return ctx.datasetIndex === 0 ? 'top' : 'bottom'; }
+          : 'end',
+        offset: type === 'bar' ? 4 : 3,
+        font: { size: 11, weight: '800' },
         formatter: function (v) { return v === null || v === undefined ? '' : formatador(v) + (unidade || ''); },
+        // Impede que os valores sejam cortados na margem superior ou inferior.
+        clamp: true,
       };
     }
     el.style.height = '230px';
@@ -3322,7 +3584,8 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
       type: type, data: { labels: labels, datasets: datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
-        layout: { padding: { top: 18 } },
+        // Padding maior no topo para os números do datalabels nunca ficarem cortados.
+        layout: { padding: { top: 28, bottom: 4, left: 4, right: 4 } },
         plugins: plugins,
         scales: {
           y: { beginAtZero: beginAtZero, grid: { color: '#eef1f4' }, ticks: { color: '#93a1ac', callback: function (v) { return formatador(v) + (unidade || ''); } } },
@@ -3336,7 +3599,7 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
   const labelsTroço = m.porTroço.map(function (t) { return t.label; });
   mkLineBar('chart_vel', labelsTroço, m.porTroço.map(function(t){return t.vel?+t.vel.toFixed(2):null;}), mPB ? mPB.porTroço.map(function(t){return t.vel?+t.vel.toFixed(2):null;}) : null, 'line', '', { formatador: fmtEixo1 });
   mkLineBar('chart_freq', labelsTroço, m.porTroço.map(function(t){return t.freq?+t.freq.toFixed(1):null;}), mPB ? mPB.porTroço.map(function(t){return t.freq?+t.freq.toFixed(1):null;}) : null, 'line', '', { formatador: fmtEixo1 });
-  mkLineBar('chart_dpc', labelsTroço, m.porTroço.map(function(t){return t.distPorCiclo?+t.distPorCiclo.toFixed(2):null;}), mPB ? mPB.porTroço.map(function(t){return t.distPorCiclo?+t.distPorCiclo.toFixed(2):null;}) : null, 'bar', 'm', { formatador: fmtEixo1, mostrarValores: true });
+  mkLineBar('chart_dpc', labelsTroço, m.porTroço.map(function(t){return t.distPorCiclo?+t.distPorCiclo.toFixed(2):null;}), mPB ? mPB.porTroço.map(function(t){return t.distPorCiclo?+t.distPorCiclo.toFixed(2):null;}) : null, 'line', 'm', { formatador: fmtEixo1 });
 
   if (m.porViragem.length) {
     const labelsV = m.porViragem.map(function (v) { return v.emMetros + 'm'; });
@@ -3366,17 +3629,100 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
 }
 
 
-function exportarRelatorio() {
+// Devolve um nome de ficheiro apropriado consoante o ecrã atual (relatório
+// normal de uma análise, ou relatório comparativo de duas).
+function nomeFicheiroRelatorio() {
+  if (state.screen === 'compararRelatorio') {
+    const sel = state.comparacao.selecionadas;
+    if (sel.length === 2) {
+      const a1 = encontrarAnalise(sel[0].swimmerId, sel[0].analiseId);
+      if (a1) return 'comparacao_' + a1.estilo + a1.distancia;
+    }
+    return 'comparacao';
+  }
   const sw = getSwimmer(state.swimmerId);
-  const an = sw.analises.find(function (a) { return a.id === state.verAnaliseId; });
-  toast('A gerar imagem...');
+  const an = sw ? sw.analises.find(function (a) { return a.id === state.verAnaliseId; }) : null;
+  if (sw && an) return 'relatorio_' + sw.nome.replace(/\s+/g,'_') + '_' + an.estilo + an.distancia + '_' + fmtData(an.dataProva || an.criadoEm).replace(/\//g,'-');
+  return 'relatorio';
+}
+
+function exportarRelatorio() {
+  toast('A gerar imagem em alta resolução...');
   const container = document.getElementById('app');
-  html2canvas(container, { backgroundColor: '#07111f', scale: 2 }).then(function (canvas) {
+  // O relatório é sempre em fundo claro (independente do tema dark/light
+  // geral da app), por isso a exportação tem de usar o mesmo fundo claro —
+  // usar a cor escura aqui produzia uma imagem com fundo errado.
+  html2canvas(container, { backgroundColor: '#f4f6f8', scale: 4 }).then(function (canvas) {
     const link = document.createElement('a');
-    link.download = 'relatorio_' + (sw ? sw.nome.replace(/\s+/g,'_') : 'nadador') + '_' + an.estilo + an.distancia + '_' + fmtData(an.dataProva || an.criadoEm).replace(/\//g,'-') + '.png';
+    link.download = nomeFicheiroRelatorio() + '.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
   }).catch(function () { toast('Não foi possível exportar. Tenta novamente.'); });
+}
+
+// Exporta o relatório como PDF em páginas A4, capturando cada cartão
+// individualmente (em alta resolução) e distribuindo-os pelas páginas sem
+// nunca cortar um cartão a meio entre duas páginas.
+function exportarRelatorioPDF() {
+  toast('A gerar PDF, aguarda um momento...');
+
+  const container = document.getElementById('app');
+  // captura cada bloco visível de topo a baixo (cabeçalho + cada cartão de gráfico/dados)
+  const todosOsBlocos = [];
+  container.querySelectorAll(':scope > *').forEach(function (el) {
+    if (el.id === 'chartsContainer') {
+      Array.from(el.children).forEach(function (c) { todosOsBlocos.push(c); });
+    } else if (el.classList.contains('rep-header') || el.classList.contains('rep-toggle')) {
+      todosOsBlocos.push(el);
+    }
+  });
+
+  if (!todosOsBlocos.length) { toast('Nada para exportar.'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const margin = 10;
+  const usableW = pageW - margin * 2;
+  const usableH = pageH - margin * 2;
+
+  let cursorY = margin;
+  let primeiraImagemDaPagina = true;
+
+  function capturarEAdicionar(idx) {
+    if (idx >= todosOsBlocos.length) {
+      pdf.save(nomeFicheiroRelatorio() + '.pdf');
+      toast('PDF gerado');
+      return;
+    }
+    const el = todosOsBlocos[idx];
+    html2canvas(el, { backgroundColor: '#f4f6f8', scale: 3 }).then(function (canvas) {
+      const imgW = usableW;
+      const imgH = (canvas.height / canvas.width) * imgW;
+
+      // se este bloco não couber no espaço restante da página atual, passa
+      // para a página seguinte — garante que nenhum cartão é cortado a meio
+      if (!primeiraImagemDaPagina && (cursorY + imgH) > (margin + usableH)) {
+        pdf.addPage();
+        cursorY = margin;
+        primeiraImagemDaPagina = true;
+      }
+      // se o próprio bloco for mais alto do que a página inteira, encolhe-o
+      // para caber numa página (caso raro, ex: gráfico com legenda enorme)
+      const imgHFinal = Math.min(imgH, usableH);
+      const imgWFinal = imgHFinal === imgH ? imgW : imgW * (imgHFinal / imgH);
+
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, cursorY, imgWFinal, imgHFinal);
+      cursorY += imgHFinal + 5;
+      primeiraImagemDaPagina = false;
+      capturarEAdicionar(idx + 1);
+    }).catch(function () {
+      capturarEAdicionar(idx + 1); // se um bloco falhar, continua com os restantes em vez de abortar tudo
+    });
+  }
+
+  capturarEAdicionar(0);
 }
 
 /* ============================================================
