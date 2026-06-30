@@ -831,7 +831,8 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
     // eventos posicionais: troços de piscina limpa (fim) + viragens (toque + saída, com distância junto)
     const eventos = [];
     prova.troçosPiscinaLimpa.forEach(function (t) {
-      eventos.push({ pos: t.fim, tipo: 'troço', t: t });
+      const posFim = t.baseadoNoBreakout ? t.fimParede : t.fim;
+      eventos.push({ pos: posFim, tipo: 'troço', t: t });
     });
     prova.viragens.forEach(function (v) {
       eventos.push({ pos: v.emMetros, tipo: 'viragem_toque', v: v });
@@ -841,7 +842,8 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
 
     eventos.forEach(function (e) {
       if (e.tipo === 'troço') {
-        tempos.push({ id: 'tt_' + e.t.id, label: 'Tempo aos ' + e.t.fim + 'm', sub: percursoLocal(e.t.fim, tamanhoPiscina), unidade: 's', group: 'Percurso da prova' });
+        const fimReal = e.t.baseadoNoBreakout ? e.t.fimParede : e.t.fim;
+        tempos.push({ id: 'tt_' + e.t.id, label: 'Tempo aos ' + fimReal + 'm', sub: percursoLocal(fimReal, tamanhoPiscina), unidade: 's', group: 'Percurso da prova' });
       } else if (e.tipo === 'viragem_toque') {
         const sub = 'Viragem aos ' + e.v.emMetros + 'm';
         tempos.push({ id: 'tv_aprox_' + e.v.emMetros, label: 'Tempo no toque na parede (' + e.v.emMetros + 'm)', sub: percursoLocal(e.v.emMetros, tamanhoPiscina), unidade: 's', group: 'Percurso da prova', subgrupo: sub });
@@ -915,7 +917,10 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
     }, []);
 
     const eventos = [];
-    todosTroçosLimpos.forEach(function (t) { eventos.push({ pos: t.fim, tipo: 'troço', t: t }); });
+    todosTroçosLimpos.forEach(function (t) {
+      const posFim = t.baseadoNoBreakout ? t.fimParede : t.fim;
+      eventos.push({ pos: posFim, tipo: 'troço', t: t });
+    });
     prova.viragens.forEach(function (v) {
       eventos.push({ pos: v.emMetros, tipo: 'viragem_toque', v: v });
       eventos.push({ pos: v.emMetros + 15, tipo: 'viragem_saida', v: v });
@@ -924,7 +929,8 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
 
     eventos.forEach(function (e) {
       if (e.tipo === 'troço') {
-        tempos.push({ id: 'tt_' + e.t.id, label: 'Tempo aos ' + e.t.fim + 'm', sub: percursoLocal(e.t.fim, tamanhoPiscina) + ' · ' + ESTILOS[e.t.estilo].nome, unidade: 's', group: 'Percurso da prova' });
+        const fimReal = e.t.baseadoNoBreakout ? e.t.fimParede : e.t.fim;
+        tempos.push({ id: 'tt_' + e.t.id, label: 'Tempo aos ' + fimReal + 'm', sub: percursoLocal(fimReal, tamanhoPiscina) + ' · ' + ESTILOS[e.t.estilo].nome, unidade: 's', group: 'Percurso da prova' });
       } else if (e.tipo === 'viragem_toque') {
         const tagTransição = e.v.éTransição ? (' · transição ' + ESTILOS[e.v.estiloEntrada].nome + '→' + ESTILOS[e.v.estiloSaida].nome) : (' · ' + ESTILOS[e.v.estiloEntrada].nome);
         const sub = 'Viragem aos ' + e.v.emMetros + 'm';
