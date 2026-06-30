@@ -842,6 +842,15 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
       eventos.push({ pos: posFim, tipo: 'troço', t: t });
     });
     prova.viragens.forEach(function (v) {
+      // Em piscina de 25m a zona de "piscina limpa" termina no breakout (sem
+      // chegar à marca -5m da viragem), por isso já não há nenhum troço fixo
+      // que nos dê o tempo absoluto nesse ponto — precisamos de o pedir
+      // explicitamente para conseguir calcular o tempo de aproximação à
+      // viragem (toque − tempo aos -5m). Em piscina de 50m isso continua a
+      // vir do fim do troço de piscina limpa anterior, sem precisar de campo extra.
+      if (tamanhoPiscina === 25) {
+        eventos.push({ pos: v.emMetros - 5, tipo: 'viragem_aprox5', v: v });
+      }
       eventos.push({ pos: v.emMetros, tipo: 'viragem_toque', v: v });
       eventos.push({ pos: v.emMetros + 15, tipo: 'viragem_saida', v: v });
     });
@@ -849,14 +858,22 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
 
     eventos.forEach(function (e) {
       if (e.tipo === 'troço') {
-        const fimReal = e.t.baseadoNoBreakout ? e.t.fimParede : e.t.fim;
-        tempos.push({ id: 'tt_' + e.t.id, label: 'Tempo aos ' + fimReal + 'm', sub: percursoLocal(fimReal, tamanhoPiscina), unidade: 's', group: 'Percurso da prova' });
+        // Troços baseados no breakout (piscina 25m) não precisam de campo
+        // próprio: o fim do troço já é o toque na parede (tv_aprox_X), que
+        // tem o seu próprio campo gerado pelo evento 'viragem_toque' (ou é o
+        // tempo_total, na última piscina). Pedir aqui seria duplicado.
+        if (!e.t.baseadoNoBreakout) {
+          tempos.push({ id: 'tt_' + e.t.id, label: 'Tempo aos ' + e.t.fim + 'm', sub: percursoLocal(e.t.fim, tamanhoPiscina), unidade: 's', group: 'Percurso da prova' });
+        }
+      } else if (e.tipo === 'viragem_aprox5') {
+        const sub = 'Viragem aos ' + e.v.emMetros + 'm';
+        tempos.push({ id: 'tv_pre5_' + e.v.emMetros, label: 'Tempo aos ' + (e.v.emMetros - 5) + 'm', sub: percursoLocal(e.v.emMetros - 5, tamanhoPiscina), unidade: 's', group: 'Percurso da prova', subgrupo: sub });
       } else if (e.tipo === 'viragem_toque') {
         const sub = 'Viragem aos ' + e.v.emMetros + 'm';
         tempos.push({ id: 'tv_aprox_' + e.v.emMetros, label: 'Tempo no toque na parede (' + e.v.emMetros + 'm)', sub: percursoLocal(e.v.emMetros, tamanhoPiscina), unidade: 's', group: 'Percurso da prova', subgrupo: sub });
       } else if (e.tipo === 'viragem_saida') {
         const sub = 'Viragem aos ' + e.v.emMetros + 'm';
-        tempos.push({ id: 'saida_dist_' + e.v.emMetros, label: 'Distância de saída pós-viragem (' + e.v.emMetros + 'm)', sub: percursoLocalSaida(e.v.emMetros, tamanhoPiscina), unidade: 'm', group: 'Percurso da prova', subgrupo: sub });
+        tempos.push({ id: 'saida_dist_' + e.v.emMetros, label: 'Distância de breakout pós-viragem (' + e.v.emMetros + 'm)', sub: percursoLocalSaida(e.v.emMetros, tamanhoPiscina), unidade: 'm', group: 'Percurso da prova', subgrupo: sub });
         tempos.push({ id: 'tv_saida_' + e.v.emMetros, label: 'Tempo aos ' + (e.v.emMetros+15) + 'm', sub: percursoLocal(e.v.emMetros+15, tamanhoPiscina), unidade: 's', group: 'Percurso da prova', subgrupo: sub });
       }
     });
@@ -929,6 +946,9 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
       eventos.push({ pos: posFim, tipo: 'troço', t: t });
     });
     prova.viragens.forEach(function (v) {
+      if (tamanhoPiscina === 25) {
+        eventos.push({ pos: v.emMetros - 5, tipo: 'viragem_aprox5', v: v });
+      }
       eventos.push({ pos: v.emMetros, tipo: 'viragem_toque', v: v });
       eventos.push({ pos: v.emMetros + 15, tipo: 'viragem_saida', v: v });
     });
@@ -936,8 +956,13 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
 
     eventos.forEach(function (e) {
       if (e.tipo === 'troço') {
-        const fimReal = e.t.baseadoNoBreakout ? e.t.fimParede : e.t.fim;
-        tempos.push({ id: 'tt_' + e.t.id, label: 'Tempo aos ' + fimReal + 'm', sub: percursoLocal(fimReal, tamanhoPiscina) + ' · ' + ESTILOS[e.t.estilo].nome, unidade: 's', group: 'Percurso da prova' });
+        if (!e.t.baseadoNoBreakout) {
+          tempos.push({ id: 'tt_' + e.t.id, label: 'Tempo aos ' + e.t.fim + 'm', sub: percursoLocal(e.t.fim, tamanhoPiscina) + ' · ' + ESTILOS[e.t.estilo].nome, unidade: 's', group: 'Percurso da prova' });
+        }
+      } else if (e.tipo === 'viragem_aprox5') {
+        const tag = ' · ' + ESTILOS[e.v.estiloEntrada].nome;
+        const sub = 'Viragem aos ' + e.v.emMetros + 'm';
+        tempos.push({ id: 'tv_pre5_' + e.v.emMetros, label: 'Tempo aos ' + (e.v.emMetros - 5) + 'm' + tag, sub: percursoLocal(e.v.emMetros - 5, tamanhoPiscina), unidade: 's', group: 'Percurso da prova', subgrupo: sub });
       } else if (e.tipo === 'viragem_toque') {
         const tagTransição = e.v.éTransição ? (' · transição ' + ESTILOS[e.v.estiloEntrada].nome + '→' + ESTILOS[e.v.estiloSaida].nome) : (' · ' + ESTILOS[e.v.estiloEntrada].nome);
         const sub = 'Viragem aos ' + e.v.emMetros + 'm';
@@ -945,7 +970,7 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
       } else if (e.tipo === 'viragem_saida') {
         const tagTransição = e.v.éTransição ? (' · transição ' + ESTILOS[e.v.estiloEntrada].nome + '→' + ESTILOS[e.v.estiloSaida].nome) : (' · ' + ESTILOS[e.v.estiloEntrada].nome);
         const sub = 'Viragem aos ' + e.v.emMetros + 'm';
-        tempos.push({ id: 'saida_dist_' + e.v.emMetros, label: 'Distância de saída pós-viragem (' + e.v.emMetros + 'm)', sub: percursoLocalSaida(e.v.emMetros, tamanhoPiscina), unidade: 'm', group: 'Percurso da prova', subgrupo: sub });
+        tempos.push({ id: 'saida_dist_' + e.v.emMetros, label: 'Distância de breakout pós-viragem (' + e.v.emMetros + 'm)', sub: percursoLocalSaida(e.v.emMetros, tamanhoPiscina), unidade: 'm', group: 'Percurso da prova', subgrupo: sub });
         tempos.push({ id: 'tv_saida_' + e.v.emMetros, label: 'Tempo aos ' + (e.v.emMetros+15) + 'm' + tagTransição, sub: percursoLocal(e.v.emMetros+15, tamanhoPiscina), unidade: 's', group: 'Percurso da prova', subgrupo: sub });
       }
     });
@@ -1175,14 +1200,20 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
 
 function tempoAbsolutoEntradaAproximacao(viragem, prova, dados) {
   function n(id) { const v = dados[id]; return (v === undefined || v === '' || v === null) ? null : parseFloat(v); }
-  // a aproximação começa 5m antes da viragem; o tempo absoluto nesse ponto
-  // corresponde ao fim do troço de piscina limpa anterior (que termina exatamente
-  // na marca viragem-35, ou seja, (apósViragemAnterior)+45) — usamos aos_15m_s
-  // para a 1ª piscina, ou o tt_ do troço de piscina limpa imediatamente anterior.
+  // a aproximação começa 5m antes da viragem.
+  // Em piscina de 25m, a zona de "piscina limpa" é baseada no breakout (sem
+  // metros fixos), por isso não há troço nenhum que termine exatamente na
+  // marca -5m da viragem — usamos o campo explícito tv_pre5_X pedido para
+  // esse efeito.
+  if (prova.tamanhoPiscina === 25) {
+    return n('tv_pre5_' + viragem.emMetros);
+  }
+  // Em piscina de 50m, esse ponto coincide com o fim de um troço de piscina
+  // limpa fixo (ou com aos_15m_s, na primeira piscina) — sem precisar de
+  // campo extra.
   const todosTroços = prova.isMedley
     ? prova.troços.reduce(function (acc, tr) { return acc.concat(tr.troçosPiscinaLimpa); }, [])
     : prova.troçosPiscinaLimpa;
-  // o troço cujo fim é viragem.emMetros - 5
   const tAnterior = todosTroços.find(function (t) { return t.fim === viragem.emMetros - 5; });
   if (tAnterior) return n('tt_' + tAnterior.id);
   if (viragem.emMetros - 5 === 15) return n('aos_15m_s');
@@ -1472,6 +1503,7 @@ const state = {
     tempoPartidaAbsoluto: null, // tempo do vídeo (video.currentTime) correspondente ao frame da partida
     indiceMarcacaoAtual: 0,     // índice do próximo campo a marcar na lista sequencial
     zoom: 1, panX: 0, panY: 0,  // estado de ampliação/deslocação do vídeo principal
+    estabilizando: false,       // true enquanto o vídeo ainda está a processar um seek (currentTime não fiável)
   },
   calibDistancia: {
     ativo: false,           // true quando o overlay de calibração de distância está aberto
@@ -2210,6 +2242,7 @@ function renderVideoMarkSection() {
   const listaNova = el.querySelector('.video-mark-list');
   if (listaNova) listaNova.scrollTop = scrollListaAntes;
   window.scrollTo(0, scrollDocAntes);
+  atualizarEstadoBotoesMarcar();
 }
 
 function getVideoEl() { return document.getElementById('videoPlayer'); }
@@ -2224,19 +2257,55 @@ function videoPlayPause() {
 // Avança/recua um frame. Usa requestVideoFrameCallback quando disponível
 // (mais preciso, segue o frame real do vídeo); caso contrário usa um
 // incremento fixo de 1/30s como aproximação razoável.
+//
+// IMPORTANTE: definir v.currentTime é assíncrono — o browser só atualiza
+// o valor real depois do evento 'seeked' disparar. Em Safari/iPad esse
+// atraso é mais percetível do que noutros browsers, e se o utilizador
+// tocar em "Marcar" antes do seek terminar, v.currentTime ainda devolve
+// o valor ANTIGO — dando a sensação de que é preciso tocar duas vezes.
+// Por isso marcamos o vídeo como "a mover" e só o desmarcamos quando o
+// 'seeked' confirma que o novo frame está mesmo disponível.
 function videoFrameStep(direcao) {
   const v = getVideoEl();
   if (!v) return;
   v.pause();
   document.getElementById('videoPlayBtn').textContent = '▶ Play';
   const incremento = (typeof v.getVideoPlaybackQuality === 'function') ? (1 / 60) : (1 / 30);
+  marcarVideoComoEstabilizando(v);
   v.currentTime = Math.max(0, v.currentTime + direcao * incremento);
   atualizarRelogioVideo();
+}
+
+// Liga (uma única vez) o listener que sabe quando o vídeo terminou de
+// "assentar" num novo frame após um seek, e usa isso para desbloquear os
+// botões de marcação assim que currentTime estiver realmente fiável.
+function marcarVideoComoEstabilizando(v) {
+  state.video.estabilizando = true;
+  atualizarEstadoBotoesMarcar();
+  if (!v.dataset.seekedListenerAtivo) {
+    v.dataset.seekedListenerAtivo = '1';
+    v.addEventListener('seeked', function () {
+      state.video.estabilizando = false;
+      atualizarRelogioVideo();
+      atualizarEstadoBotoesMarcar();
+    });
+  }
+}
+
+// Desativa visualmente os botões de marcação enquanto o vídeo ainda está
+// a processar um seek, para impedir capturar um currentTime desatualizado.
+function atualizarEstadoBotoesMarcar() {
+  const desativar = !!state.video.estabilizando;
+  document.querySelectorAll('.vm-btn, .vm-btn-manual').forEach(function (btn) {
+    btn.disabled = desativar;
+    btn.style.opacity = desativar ? '0.5' : '';
+  });
 }
 
 function onScrubberInput(input) {
   const v = getVideoEl();
   if (!v) return;
+  marcarVideoComoEstabilizando(v);
   v.currentTime = (parseFloat(input.value) / 100) * (v.duration || 0);
   atualizarRelogioVideo();
 }
@@ -2801,7 +2870,7 @@ function renderGraficos(an, m, mPB) {
 
   if (m.porViragem.length) {
     html += chartCard('chart_viragem', 'Tempo de viragem', 'aproximação + saída (s), por viragem');
-    html += chartCard('chart_saida', 'Saída de viragem', 'distância de saída (m) após cada viragem');
+    html += chartCard('chart_saida', 'Breakout de viragem', 'distância de breakout (m) após cada viragem');
   }
 
   html += chartCard('chart_ciclos50', 'Ciclos de braçada', 'contagem a cada 50m');
