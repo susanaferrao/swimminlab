@@ -248,6 +248,11 @@ input, select { font-family: inherit; }
 .history-item .hi-date { font-size: 12px; color: var(--txt3); }
 .history-item .hi-time { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .history-item .hi-pb-tag { font-size: 10px; color: var(--gold); font-weight: 700; text-transform: uppercase; }
+.history-item .hi-delete-btn {
+  background: transparent; border: none; color: var(--txt3); flex-shrink: 0;
+  width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+}
+.history-item .hi-delete-btn:active { background: rgba(239,68,68,0.15); color: #ef4444; }
 
 .compare-checkbox {
   width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border2);
@@ -1741,12 +1746,22 @@ function renderPerfil() {
       html += '<div class="history-item' + (isPB ? ' is-pb' : '') + '" onclick="nav(\'relatorio\',{swimmerId:\'' + sw.id + '\',verAnaliseId:\'' + a.id + '\',compararPB:false})">' +
         '<div><div class="hi-date">' + fmtData(a.dataProva || a.criadoEm) + (isPB ? '<span class="hi-pb-tag"> · melhor registo</span>' : '') + '</div>' +
         '<div class="hi-time">' + fmtTempo(a.tempoTotal) + '</div></div>' +
+        '<button class="hi-delete-btn" onclick="event.stopPropagation();apagarAnaliseDoHistorico(\'' + sw.id + '\',\'' + a.id + '\')" aria-label="Apagar análise">' +
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>' +
+        '</button>' +
         '<div class="chevron">›</div></div>';
     });
     html += '</div>';
   });
 
   return html;
+}
+
+function apagarAnaliseDoHistorico(swimmerId, analiseId) {
+  showConfirm('Apagar análise', 'Apagar esta análise permanentemente?', function () {
+    deleteAnalise(swimmerId, analiseId);
+    render();
+  });
 }
 
 function apagarNadador(id) {
