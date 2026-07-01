@@ -1811,6 +1811,7 @@ function renderListaNadadores() {
       '<div class="meta">' + s.analises.length + ' análise' + (s.analises.length === 1 ? '' : 's') + '</div></div>' +
       '<div class="chevron">›</div></div>';
   });
+  html += '<button class="fab" onclick="abrirNovoNadador()">+</button>';
   return html;
 }
 
