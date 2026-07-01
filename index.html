@@ -128,11 +128,24 @@ html, body { transition: background-color .2s ease, color .2s ease; }
 .rep-legend .rep-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
 
 .rep-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  display: flex; align-items: flex-start; flex-direction: column; gap: 6px;
   padding: 10px 0; border-bottom: 1px solid var(--rep-border); color: var(--rep-txt);
 }
 .rep-row:last-child { border-bottom: none; }
-.rep-row .rep-row-label { font-size: 13px; color: var(--rep-txt2); font-weight: 600; }
+.rep-row .rep-row-label { font-size: 12px; color: var(--rep-txt2); font-weight: 600; margin-bottom: 2px; }
+.rep-row-values { display: flex; align-items: center; gap: 10px; width: 100%; }
+.rep-row-serie {
+  display: flex; align-items: center; gap: 6px; flex: 1;
+  background: var(--rep-bg2); border-radius: 8px; padding: 7px 10px;
+}
+.rep-row-serie .serie-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.rep-row-serie .serie-name { font-size: 11px; font-weight: 700; color: var(--rep-txt2); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rep-row-serie .serie-val { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--rep-txt); }
+.rep-row-serie .serie-arrow { font-size: 14px; font-weight: 900; flex-shrink: 0; }
+.serie-arrow.up { color: #16a34a; }
+.serie-arrow.down { color: #dc2626; }
+.serie-arrow.eq { color: var(--rep-txt3); font-size: 12px; }
+/* Linha simples (sem comparação, relatório de 1 análise) */
 .rep-row .rep-row-value { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .rep-row .rep-row-pb { font-size: 11px; color: var(--rep-gold); font-weight: 700; margin-left: 8px; }
 
@@ -1171,6 +1184,8 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
     mediaParcial100: null,
     seg50: null,
     tempoChegada5m: null,
+    totalBracadas: null,
+    mediaBracadasPorSegmento: null,
     partida: {},
   };
 
@@ -1260,12 +1275,22 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
   });
 
   const blocos50 = prova.isMedley
-    ? prova.troços.reduce(function (acc, tr) { return acc.concat(tr.blocos50m); }, [])
-    : prova.blocos50m;
+    ? prova.troços.reduce(function (acc, tr) { return acc.concat(tr.blocos50m.map(function(b){ return Object.assign({}, b, { estilo: tr.estilo }); })); }, [])
+    : prova.blocos50m.map(function(b) { return Object.assign({}, b, { estilo: estilo }); });
   blocos50.forEach(function (b) {
     const c = n('ciclos_' + b.id);
-    out.porBloco50.push({ id: b.id, label: b.inicio + '-' + b.fim + 'm', ciclos: c });
+    // Mariposa e Bruços: 1 ciclo = 1 braçada (sincronismo bilateral)
+    // Crol e Costas: 1 ciclo = 2 braçadas (alternado)
+    const fatorBracadas = (b.estilo === 'MARIPOSA' || b.estilo === 'BRUCOS') ? 1 : 2;
+    const bracadas = (c !== null) ? c * fatorBracadas : null;
+    out.porBloco50.push({ id: b.id, label: b.inicio + '-' + b.fim + 'm', estilo: b.estilo, ciclos: c, bracadas: bracadas });
   });
+
+  // totais de braçadas
+  const totalBraçadas = out.porBloco50.reduce(function(acc, b) { return (b.bracadas !== null) ? acc + b.bracadas : acc; }, 0);
+  const blocosCom = out.porBloco50.filter(function(b) { return b.bracadas !== null; });
+  out.totalBracadas = blocosCom.length > 0 ? totalBraçadas : null;
+  out.mediaBracadasPorSegmento = (blocosCom.length > 0) ? totalBraçadas / blocosCom.length : null;
 
   const ondPartida = n('ond_partida');
   if (ondPartida !== null) out.ondulacoes.push({ label: 'Pós-partida (0-15m)', valor: ondPartida });
@@ -3303,6 +3328,45 @@ function apagarAnaliseAtual() {
   });
 }
 
+// Gera uma linha de tabela com comparação visual entre duas séries:
+// - cor identificadora (azul/laranja) alinhada com os gráficos
+// - seta ↑ (verde) se série1 é melhor, ↓ (vermelho) se série2 é melhor
+// - "maiorMelhor": true se um valor mais alto é melhor (ex: distância),
+//                  false se um valor mais baixo é melhor (ex: tempo)
+function renderRepRow(label, v1, v2, fmt, maiorMelhor, label1, label2) {
+  const COL1 = '#0096c7', COL2 = '#f4762a';
+
+  // linha simples (sem comparação): formato anterior
+  if (v2 === undefined || v2 === null) {
+    return '<div class="rep-row"><div class="rep-row-label">' + escapeHtml(label) + '</div>' +
+      '<div class="rep-row-value">' + (v1 !== null && v1 !== undefined ? fmt(v1) : '—') + '</div></div>';
+  }
+
+  function seta(a, b) {
+    if (a === null || a === undefined || b === null || b === undefined) return '<span class="serie-arrow eq">—</span>';
+    const eps = 0.001;
+    const aMelhor = maiorMelhor ? (a > b + eps) : (a < b - eps);
+    const bMelhor = maiorMelhor ? (b > a + eps) : (b < a - eps);
+    if (aMelhor) return '<span class="serie-arrow up">↑</span>';
+    if (bMelhor) return '<span class="serie-arrow down">↓</span>';
+    return '<span class="serie-arrow eq">=</span>';
+  }
+
+  return '<div class="rep-row"><div class="rep-row-label">' + escapeHtml(label) + '</div>' +
+    '<div class="rep-row-values">' +
+    '<div class="rep-row-serie">' +
+      '<div class="serie-dot" style="background:' + COL1 + '"></div>' +
+      '<div class="serie-val">' + (v1 !== null && v1 !== undefined ? fmt(v1) : '—') + '</div>' +
+      seta(v1, v2) +
+    '</div>' +
+    '<div class="rep-row-serie">' +
+      '<div class="serie-dot" style="background:' + COL2 + '"></div>' +
+      '<div class="serie-val">' + (v2 !== null && v2 !== undefined ? fmt(v2) : '—') + '</div>' +
+      seta(v2, v1) +
+    '</div>' +
+    '</div></div>';
+}
+
 function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   // defaults para o relatório normal (1 análise vs PB)
   labelSerie1 = labelSerie1 || 'Atual';
@@ -3319,7 +3383,8 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
     html += chartCard('chart_saida', 'Breakout de viragem', 'distância de breakout (m) após cada viragem');
   }
 
-  html += chartCard('chart_ciclos50', 'Ciclos de braçada', 'contagem a cada 50m');
+  html += chartCard('chart_ciclos50', 'Ciclos de braçada', 'contagem a cada ' + (an.tamanhoPiscina || 50) + 'm');
+  html += chartCard('chart_bracadas', 'Braçadas', 'contagem por segmento');
 
   if (m.ondulacoes.length) {
     html += chartCard('chart_ond', 'Movimentos ondulatórios', 'contagem pós-partida e pós-viragem');
@@ -3343,43 +3408,50 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   const estiloPartida = an.isMedley || an.estilo === 'ESTILOS' ? 'MARIPOSA' : an.estilo;
   const camposPartida = familiaPartida(estiloPartida);
   camposPartida.forEach(function (c) {
-    const v = m.partida[c.id];
-    const vPB = mPB ? mPB.partida[c.id] : null;
-    html += '<div class="rep-row"><div class="rep-row-label">' + c.label + '</div>' +
-      '<div class="rep-row-value">' + (v !== null && v !== undefined ? v + ' ' + c.unidade : '—') +
-      (vPB !== null && vPB !== undefined ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + vPB + '</span>' : '') + '</div></div>';
+    const v1 = m.partida[c.id];
+    const v2 = mPB ? mPB.partida[c.id] : undefined;
+    const maiorMelhor = c.unidade === 'm'; // distâncias maiores = melhor; tempos menores = melhor
+    const fmt = c.unidade === 's' ? function(v) { return fmtNum(v, 2, ' s'); } : function(v) { return fmtNum(v, 2, ' m'); };
+    html += renderRepRow(c.label, v1, v2, fmt, maiorMelhor, labelSerie1, labelSerie2);
     if (c.id === 'tempo_entrada_maos_s') {
-      const voo = m.partida.duracao_voo_s, vooPB = mPB ? mPB.partida.duracao_voo_s : null;
-      html += '<div class="rep-row"><div class="rep-row-label">Duração de voo</div>' +
-        '<div class="rep-row-value">' + (voo !== null && voo !== undefined ? fmtNum(voo, 2, ' s') : '—') +
-        (vooPB !== null && vooPB !== undefined ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtNum(vooPB, 2, ' s') + '</span>' : '') + '</div></div>';
+      const voo1 = m.partida.duracao_voo_s;
+      const voo2 = mPB ? mPB.partida.duracao_voo_s : undefined;
+      // duração de voo: menor é melhor? Não necessariamente — não há consenso,
+      // por isso usamos seta baseada em "maior distância de voo = melhor deslize"
+      html += renderRepRow('Duração de voo', voo1, voo2, function(v) { return fmtNum(v, 2, ' s'); }, false, labelSerie1, labelSerie2);
     }
   });
   html += '</div>';
 
   if (m.seg50) {
     const seg50PB = mPB ? mPB.seg50 : null;
-    html += '<div class="rep-card"><div class="rep-card-title">Segmentos da prova (50m)</div><div class="rep-card-desc">Divisão em três fases</div>' +
-      '<div class="rep-row"><div class="rep-row-label">Até aos 15m</div><div class="rep-row-value">' + fmtTempo(m.seg50.ate15m) + (seg50PB ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtTempo(seg50PB.ate15m) + '</span>' : '') + '</div></div>' +
-      '<div class="rep-row"><div class="rep-row-label">Nado (15m–45m)</div><div class="rep-row-value">' + fmtTempo(m.seg50.nadoCentral) + (seg50PB ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtTempo(seg50PB.nadoCentral) + '</span>' : '') + '</div></div>' +
-      '<div class="rep-row"><div class="rep-row-label">Chegada (últimos 5m)</div><div class="rep-row-value">' + fmtTempo(m.seg50.chegada) + (seg50PB ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtTempo(seg50PB.chegada) + '</span>' : '') + '</div></div></div>';
+    html += '<div class="rep-card"><div class="rep-card-title">Segmentos da prova (50m)</div><div class="rep-card-desc">Divisão em três fases</div>';
+    html += renderRepRow('Até aos 15m', m.seg50.ate15m, seg50PB ? seg50PB.ate15m : undefined, fmtTempo, false, labelSerie1, labelSerie2);
+    html += renderRepRow('Nado (15m–45m)', m.seg50.nadoCentral, seg50PB ? seg50PB.nadoCentral : undefined, fmtTempo, false, labelSerie1, labelSerie2);
+    html += renderRepRow('Chegada (últimos 5m)', m.seg50.chegada, seg50PB ? seg50PB.chegada : undefined, fmtTempo, false, labelSerie1, labelSerie2);
+    html += '</div>';
   } else if (m.tempoChegada5m !== null) {
-    const chegadaPB = mPB ? mPB.tempoChegada5m : null;
-    html += '<div class="rep-card"><div class="rep-card-title">Chegada</div><div class="rep-card-desc">Tempo dos últimos 5m antes de tocar na parede</div>' +
-      '<div class="rep-row"><div class="rep-row-label">Últimos 5m</div><div class="rep-row-value">' + fmtTempo(m.tempoChegada5m) +
-      (chegadaPB !== null ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtTempo(chegadaPB) + '</span>' : '') + '</div></div></div>';
+    html += '<div class="rep-card"><div class="rep-card-title">Chegada</div><div class="rep-card-desc">Tempo dos últimos 5m antes de tocar na parede</div>';
+    html += renderRepRow('Últimos 5m', m.tempoChegada5m, mPB ? mPB.tempoChegada5m : undefined, fmtTempo, false, labelSerie1, labelSerie2);
+    html += '</div>';
   }
 
   if (m.mediaParcial50 !== null || m.mediaParcial100 !== null) {
     html += '<div class="rep-card"><div class="rep-card-title">Médias de parciais</div><div class="rep-card-desc">Referência para regularidade de ritmo</div>';
     if (m.mediaParcial50 !== null) {
-      html += '<div class="rep-row"><div class="rep-row-label">Média parcial 50m</div><div class="rep-row-value">' + fmtTempo(m.mediaParcial50) +
-        (mPB && mPB.mediaParcial50 !== null ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtTempo(mPB.mediaParcial50) + '</span>' : '') + '</div></div>';
+      html += renderRepRow('Média parcial 50m', m.mediaParcial50, mPB ? mPB.mediaParcial50 : undefined, fmtTempo, false, labelSerie1, labelSerie2);
     }
     if (m.mediaParcial100 !== null) {
-      html += '<div class="rep-row"><div class="rep-row-label">Média parcial 100m</div><div class="rep-row-value">' + fmtTempo(m.mediaParcial100) +
-        (mPB && mPB.mediaParcial100 !== null ? '<span class="rep-row-pb">' + escapeHtml(labelSerie2) + ': ' + fmtTempo(mPB.mediaParcial100) + '</span>' : '') + '</div></div>';
+      html += renderRepRow('Média parcial 100m', m.mediaParcial100, mPB ? mPB.mediaParcial100 : undefined, fmtTempo, false, labelSerie1, labelSerie2);
     }
+    html += '</div>';
+  }
+
+  if (m.totalBracadas !== null) {
+    const tamStr = (an.tamanhoPiscina || 50) + 'm';
+    html += '<div class="rep-card"><div class="rep-card-title">Braçadas</div><div class="rep-card-desc">Totais e média por segmento de ' + tamStr + '</div>';
+    html += renderRepRow('Total de braçadas na prova', m.totalBracadas, mPB ? mPB.totalBracadas : undefined, function(v) { return fmtNum(v, 1, ''); }, false, labelSerie1, labelSerie2);
+    html += renderRepRow('Média por segmento (' + tamStr + ')', m.mediaBracadasPorSegmento, mPB ? mPB.mediaBracadasPorSegmento : undefined, function(v) { return fmtNum(v, 1, ''); }, false, labelSerie1, labelSerie2);
     html += '</div>';
   }
 
@@ -3597,34 +3669,35 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
   }
 
   const labelsTroço = m.porTroço.map(function (t) { return t.label; });
-  mkLineBar('chart_vel', labelsTroço, m.porTroço.map(function(t){return t.vel?+t.vel.toFixed(2):null;}), mPB ? mPB.porTroço.map(function(t){return t.vel?+t.vel.toFixed(2):null;}) : null, 'line', '', { formatador: fmtEixo1 });
-  mkLineBar('chart_freq', labelsTroço, m.porTroço.map(function(t){return t.freq?+t.freq.toFixed(1):null;}), mPB ? mPB.porTroço.map(function(t){return t.freq?+t.freq.toFixed(1):null;}) : null, 'line', '', { formatador: fmtEixo1 });
-  mkLineBar('chart_dpc', labelsTroço, m.porTroço.map(function(t){return t.distPorCiclo?+t.distPorCiclo.toFixed(2):null;}), mPB ? mPB.porTroço.map(function(t){return t.distPorCiclo?+t.distPorCiclo.toFixed(2):null;}) : null, 'line', 'm', { formatador: fmtEixo1 });
+  mkLineBar('chart_vel', labelsTroço, m.porTroço.map(function(t){return t.vel?+t.vel.toFixed(2):null;}), mPB ? mPB.porTroço.map(function(t){return t.vel?+t.vel.toFixed(2):null;}) : null, 'line', ' m/s', { formatador: fmtEixo1 });
+  mkLineBar('chart_freq', labelsTroço, m.porTroço.map(function(t){return t.freq?+t.freq.toFixed(1):null;}), mPB ? mPB.porTroço.map(function(t){return t.freq?+t.freq.toFixed(1):null;}) : null, 'line', ' c/min', { formatador: fmtEixo1 });
+  mkLineBar('chart_dpc', labelsTroço, m.porTroço.map(function(t){return t.distPorCiclo?+t.distPorCiclo.toFixed(2):null;}), mPB ? mPB.porTroço.map(function(t){return t.distPorCiclo?+t.distPorCiclo.toFixed(2):null;}) : null, 'line', ' m', { formatador: fmtEixo1 });
 
   if (m.porViragem.length) {
     const labelsV = m.porViragem.map(function (v) { return v.emMetros + 'm'; });
-    mkLineBar('chart_viragem', labelsV, m.porViragem.map(function(v){return v.tTotal?+v.tTotal.toFixed(2):null;}), mPB ? mPB.porViragem.map(function(v){return v.tTotal?+v.tTotal.toFixed(2):null;}) : null, 'bar', 's', { formatador: fmtEixo1, beginAtZero: true });
-    mkLineBar('chart_saida', labelsV, m.porViragem.map(function(v){return v.distSaida;}), mPB ? mPB.porViragem.map(function(v){return v.distSaida;}) : null, 'bar', 'm', { beginAtZero: true });
+    mkLineBar('chart_viragem', labelsV, m.porViragem.map(function(v){return v.tTotal?+v.tTotal.toFixed(2):null;}), mPB ? mPB.porViragem.map(function(v){return v.tTotal?+v.tTotal.toFixed(2):null;}) : null, 'bar', ' s', { formatador: fmtEixo1, beginAtZero: true });
+    mkLineBar('chart_saida', labelsV, m.porViragem.map(function(v){return v.distSaida;}), mPB ? mPB.porViragem.map(function(v){return v.distSaida;}) : null, 'bar', ' m', { beginAtZero: true });
   }
 
   const labelsB50 = m.porBloco50.map(function (b) { return b.label; });
-  mkLineBar('chart_ciclos50', labelsB50, m.porBloco50.map(function(b){return b.ciclos;}), mPB ? mPB.porBloco50.map(function(b){return b.ciclos;}) : null, 'bar', '', { formatador: fmtEixoInt, beginAtZero: true });
+  mkLineBar('chart_ciclos50', labelsB50, m.porBloco50.map(function(b){return b.ciclos;}), mPB ? mPB.porBloco50.map(function(b){return b.ciclos;}) : null, 'bar', ' ciclos', { formatador: fmtEixoInt, beginAtZero: true });
+  mkLineBar('chart_bracadas', labelsB50, m.porBloco50.map(function(b){return b.bracadas !== null ? +b.bracadas.toFixed(1) : null;}), mPB ? mPB.porBloco50.map(function(b){return b.bracadas !== null ? +b.bracadas.toFixed(1) : null;}) : null, 'bar', ' br.', { formatador: fmtEixoInt, beginAtZero: true });
 
   if (m.ondulacoes.length) {
     mkLineBar('chart_ond', m.ondulacoes.map(function(o){return o.label;}), m.ondulacoes.map(function(o){return o.valor;}),
-      mPB ? mPB.ondulacoes.map(function(o){return o.valor;}) : null, 'bar', '', { formatador: fmtEixoInt, beginAtZero: true });
+      mPB ? mPB.ondulacoes.map(function(o){return o.valor;}) : null, 'bar', ' ond.', { formatador: fmtEixoInt, beginAtZero: true });
   }
 
   if (m.respiracoes.length) {
     mkLineBar('chart_resp', m.respiracoes.map(function(r){return r.label;}), m.respiracoes.map(function(r){return r.valor;}),
-      mPB ? mPB.respiracoes.map(function(r){return r.valor;}) : null, 'bar', '', { formatador: fmtEixoInt, beginAtZero: true });
+      mPB ? mPB.respiracoes.map(function(r){return r.valor;}) : null, 'bar', ' resp.', { formatador: fmtEixoInt, beginAtZero: true });
   }
 
   mkLineBar('chart_parc50', m.parciais50.map(function(p){return p.metros+'m';}), m.parciais50.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}),
-    mPB ? mPB.parciais50.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}) : null, 'bar', 's', { beginAtZero: true });
+    mPB ? mPB.parciais50.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}) : null, 'bar', ' s', { beginAtZero: true });
   if (m.parciais100.length > 1) {
     mkLineBar('chart_parc100', m.parciais100.map(function(p){return p.metros+'m';}), m.parciais100.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}),
-      mPB ? mPB.parciais100.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}) : null, 'bar', 's', { beginAtZero: true });
+      mPB ? mPB.parciais100.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}) : null, 'bar', ' s', { beginAtZero: true });
   }
 }
 
