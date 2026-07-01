@@ -156,6 +156,9 @@ html, body { transition: background-color .2s ease, color .2s ease; }
 .rep-btn-primary { background: var(--rep-blue2); color: white; }
 .rep-btn-ghost { background: var(--rep-card); color: var(--rep-blue2); border: 1px solid var(--rep-border); }
 .rep-btn-danger { background: var(--rep-card); color: #b3261e; border: 1px solid #f3c8c4; }
+.rep-row-header { display: flex; gap: 10px; padding: 4px 0 8px; border-bottom: 2px solid var(--rep-border); margin-bottom: 2px; }
+.rep-row-header-col { flex: 1; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--rep-txt2); }
+.rep-row-header-col .serie-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 
 .rep-card-clickable { cursor: pointer; }
 .rep-card-clickable:active { background: var(--rep-bg2); }
@@ -1186,6 +1189,7 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
     tempoChegada5m: null,
     totalBracadas: null,
     mediaBracadasPorSegmento: null,
+    mediaVelSubaqVirag: null,
     partida: {},
   };
 
@@ -1266,9 +1270,16 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
     const dSaida = (tAprox !== null && tSaida !== null) ? (tSaida - tAprox) : null;
     const tTotal = (dAprox !== null && dSaida !== null) ? (dAprox + dSaida) : null;
     const distSaida = n('saida_dist_' + v.emMetros);
+    // Percurso subaquático pós-viragem: da parede até ao breakout.
+    // Distância = distSaida; Tempo = tSaida - tAprox (o intervalo já calculado em dSaida)
+    // mas dSaida inclui o toque na parede e os 15m de saída — o subaquático é
+    // apenas até ao breakout. Usando os tempos absolutos: tAbsSaida (breakout) - tAprox (toque).
+    const velSubaqViragem = (distSaida !== null && dSaida !== null && dSaida > 0)
+      ? +(distSaida / dSaida).toFixed(2) : null;
     out.porViragem.push({
       emMetros: v.emMetros, tAproximacao: dAprox, tSaida: dSaida, tTotal: tTotal,
       tAbsAprox: tAprox, tAbsSaida: tSaida, distSaida: distSaida,
+      velSubaquatico: velSubaqViragem,
       éTransição: v.éTransição || false,
       estiloEntrada: v.estiloEntrada || estilo, estiloSaida: v.estiloSaida || estilo,
     });
@@ -1291,6 +1302,13 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
   const blocosCom = out.porBloco50.filter(function(b) { return b.bracadas !== null; });
   out.totalBracadas = blocosCom.length > 0 ? totalBraçadas : null;
   out.mediaBracadasPorSegmento = (blocosCom.length > 0) ? totalBraçadas / blocosCom.length : null;
+
+  // Média da velocidade subaquática pós-viragem (exclui a partida intencionalmente
+  // — são contextos distintos: saída de bloco vs saída de viragem).
+  const viragensComVel = out.porViragem.filter(function(v) { return v.velSubaquatico !== null; });
+  out.mediaVelSubaqVirag = viragensComVel.length > 0
+    ? +(viragensComVel.reduce(function(acc, v) { return acc + v.velSubaquatico; }, 0) / viragensComVel.length).toFixed(2)
+    : null;
 
   const ondPartida = n('ond_partida');
   if (ondPartida !== null) out.ondulacoes.push({ label: 'Pós-partida (0-15m)', valor: ondPartida });
@@ -1353,6 +1371,19 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
   // mãos na água menos take off do pé anterior. Calculado, não inserido.
   const takeoffPeAnt = n('takeoff_pe_anterior_s'), entradaMaos = n('tempo_entrada_maos_s');
   out.partida.duracao_voo_s = (takeoffPeAnt !== null && entradaMaos !== null) ? (entradaMaos - takeoffPeAnt) : null;
+
+  // Percurso subaquático pós-partida: da entrada das mãos até ao breakout.
+  // Distância = distancia_breakout_m − distancia_entrada_m
+  // Tempo     = tempo_breakout_s − tempo_entrada_maos_s
+  // Velocidade = distância ÷ tempo
+  const dEntrada = n('distancia_entrada_m'), tEntrada = n('tempo_entrada_maos_s');
+  const dBreakout = n('distancia_breakout_m'), tBreakout = n('tempo_breakout_s');
+  const distSubaq = (dEntrada !== null && dBreakout !== null) ? (dBreakout - dEntrada) : null;
+  const tempoSubaq = (tEntrada !== null && tBreakout !== null) ? (tBreakout - tEntrada) : null;
+  out.partida.distancia_subaquatico_m = distSubaq !== null ? +distSubaq.toFixed(2) : null;
+  out.partida.tempo_subaquatico_s = tempoSubaq !== null ? +tempoSubaq.toFixed(2) : null;
+  out.partida.velocidade_subaquatico_ms = (distSubaq !== null && tempoSubaq !== null && tempoSubaq > 0)
+    ? +(distSubaq / tempoSubaq).toFixed(2) : null;
 
   return out;
 }
@@ -1652,6 +1683,7 @@ const state = {
   dataProva: null,
   incluirOndulacoes: true,
   incluirRespiracoes: false,
+  localProva: '',
   comparacao: {
     selecionadas: [], // até 2 entradas: { swimmerId, analiseId }
   },
@@ -2111,6 +2143,7 @@ function iniciarFormulario() {
   state.formDataProva = { estilo: state.novaAnalise.estilo, distancia: state.novaAnalise.distancia, tamanhoPiscina: state.novaAnalise.tamanhoPiscina };
   state.formStep = 'data';
   state.dataProva = new Date().toISOString().slice(0, 10);
+  state.localProva = '';
   state.editandoAnaliseId = null;
   nav('formulario');
 }
@@ -2122,6 +2155,7 @@ function editarAnalise(swimmerId, analiseId) {
   state.novaAnalise = { estilo: an.estilo, distancia: an.distancia, tamanhoPiscina: an.tamanhoPiscina || 50 };
   state.formData = Object.assign({}, an.dadosBrutos);
   state.dataProva = an.dataProva || an.criadoEm.slice(0, 10);
+  state.localProva = an.localProva || '';
   state.editandoAnaliseId = analiseId;
   state.formStep = 'data';
   nav('formulario', { swimmerId: swimmerId });
@@ -2224,6 +2258,7 @@ function renderFormularioData() {
 
   html += '<div class="step-title">Data da prova</div>';
   html += '<div class="field"><label>Data da prova</label><input type="date" id="dataProvaInput" value="' + state.dataProva + '" oninput="onDataProvaInput(this)"></div>';
+  html += '<div class="field" style="margin-top:10px"><label>Local da prova</label><input type="text" placeholder="ex: Piscina Municipal de Lisboa" value="' + escapeHtml(state.localProva || '') + '" oninput="onLocalProvaInput(this)" maxlength="100"></div>';
 
   html += '<div class="compare-toggle" style="margin-top:18px"><div><div class="ct-label">Incluir ondulações</div>' +
     '<div class="ct-sub">Conta movimentos ondulatórios pós-partida e pós-viragem</div></div>' +
@@ -2246,6 +2281,10 @@ function toggleIncluirRespiracoes(checked) {
 
 function onDataProvaInput(input) {
   state.dataProva = input.value;
+}
+
+function onLocalProvaInput(input) {
+  state.localProva = input.value;
 }
 
 function avancarParaTempos() {
@@ -2420,6 +2459,7 @@ function finalizarGuardarAnalise(estilo, distancia, metrics) {
     dadosBrutos: state.formData,
     tempoTotal: metrics.tempoTotal,
     dataProva: state.dataProva,
+    localProva: state.localProva || null,
   };
   let analise;
   if (state.editandoAnaliseId) {
@@ -3276,6 +3316,7 @@ function renderRelatorio() {
 
   const provaLabel = ESTILOS_LABEL(an.estilo) + ' ' + an.distancia + 'm · piscina ' + (an.tamanhoPiscina || 50) + 'm';
   let infoLinha = [fmtData(dataDaProva)];
+  if (an.localProva) infoLinha.push(an.localProva);
   if (sw.sexo) infoLinha.push(fmtSexo(sw.sexo));
   if (idadeNaProva) infoLinha.push(fmtIdade(idadeNaProva));
 
@@ -3333,6 +3374,21 @@ function apagarAnaliseAtual() {
 // - seta ↑ (verde) se série1 é melhor, ↓ (vermelho) se série2 é melhor
 // - "maiorMelhor": true se um valor mais alto é melhor (ex: distância),
 //                  false se um valor mais baixo é melhor (ex: tempo)
+function renderRepRowHeader(label1, label2) {
+  if (!label2) return ''; // relatório simples sem comparação: sem cabeçalho
+  const COL1 = '#0096c7', COL2 = '#f4762a';
+  return '<div class="rep-row-header">' +
+    '<div class="rep-row-header-col">' +
+      '<div class="serie-dot" style="background:' + COL1 + '"></div>' +
+      '<span>' + escapeHtml(label1 || '') + '</span>' +
+    '</div>' +
+    '<div class="rep-row-header-col">' +
+      '<div class="serie-dot" style="background:' + COL2 + '"></div>' +
+      '<span>' + escapeHtml(label2 || '') + '</span>' +
+    '</div>' +
+  '</div>';
+}
+
 function renderRepRow(label, v1, v2, fmt, maiorMelhor, label1, label2) {
   const COL1 = '#0096c7', COL2 = '#f4762a';
 
@@ -3381,6 +3437,28 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   if (m.porViragem.length) {
     html += chartCard('chart_viragem', 'Tempo de viragem', 'aproximação + saída (s), por viragem');
     html += chartCard('chart_saida', 'Breakout de viragem', 'distância de breakout (m) após cada viragem');
+
+    // Card de percurso subaquático pós-viragem: distância, tempo e velocidade
+    // por cada viragem — categoria separada da partida como solicitado.
+    if (m.porViragem.some(function(v) { return v.velSubaquatico !== null; })) {
+      html += '<div class="rep-card"><div class="rep-card-title">Percurso subaquático pós-viragem</div>' +
+        '<div class="rep-card-desc">Velocidade, distância e tempo do breakout após cada viragem</div>' +
+        renderRepRowHeader(labelSerie1, mPB ? labelSerie2 : null);
+      m.porViragem.forEach(function (v, i) {
+        if (v.velSubaquatico === null && v.distSaida === null) return;
+        const vPB = mPB ? mPB.porViragem[i] : null;
+        const prefixo = 'Viragem ' + v.emMetros + 'm — ';
+        html += renderRepRow(prefixo + 'Distância', v.distSaida, vPB ? vPB.distSaida : undefined, function(x) { return fmtNum(x, 2, ' m'); }, true, labelSerie1, labelSerie2);
+        html += renderRepRow(prefixo + 'Tempo subaquático', v.tSaida, vPB ? vPB.tSaida : undefined, function(x) { return fmtNum(x, 2, ' s'); }, false, labelSerie1, labelSerie2);
+        html += renderRepRow(prefixo + 'Velocidade', v.velSubaquatico, vPB ? vPB.velSubaquatico : undefined, function(x) { return fmtNum(x, 2, ' m/s'); }, true, labelSerie1, labelSerie2);
+      });
+      if (m.porViragem.length > 1) {
+        html += '<div style="border-top:2px solid var(--rep-border);margin-top:4px;padding-top:4px">';
+        html += renderRepRow('Média de velocidade subaquática pós-viragem', m.mediaVelSubaqVirag, mPB ? mPB.mediaVelSubaqVirag : undefined, function(x) { return fmtNum(x, 2, ' m/s'); }, true, labelSerie1, labelSerie2);
+        html += '</div>';
+      }
+      html += '</div>';
+    }
   }
 
   html += chartCard('chart_ciclos50', 'Ciclos de braçada', 'contagem a cada ' + (an.tamanhoPiscina || 50) + 'm');
@@ -3404,7 +3482,7 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   }
 
   // --- Partida (tabela simples, não gráfico) ---
-  html += '<div class="rep-card"><div class="rep-card-title">Partida</div><div class="rep-card-desc">Valores cronometrados na saída</div>';
+  html += '<div class="rep-card"><div class="rep-card-title">Partida</div><div class="rep-card-desc">Valores cronometrados na saída</div>' + renderRepRowHeader(labelSerie1, mPB ? labelSerie2 : null);
   const estiloPartida = an.isMedley || an.estilo === 'ESTILOS' ? 'MARIPOSA' : an.estilo;
   const camposPartida = familiaPartida(estiloPartida);
   camposPartida.forEach(function (c) {
@@ -3416,28 +3494,39 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
     if (c.id === 'tempo_entrada_maos_s') {
       const voo1 = m.partida.duracao_voo_s;
       const voo2 = mPB ? mPB.partida.duracao_voo_s : undefined;
-      // duração de voo: menor é melhor? Não necessariamente — não há consenso,
-      // por isso usamos seta baseada em "maior distância de voo = melhor deslize"
       html += renderRepRow('Duração de voo', voo1, voo2, function(v) { return fmtNum(v, 2, ' s'); }, false, labelSerie1, labelSerie2);
+    }
+    if (c.id === 'distancia_breakout_m') {
+      // Percurso subaquático pós-partida — mostrado logo após o breakout,
+      // já que depende da distância de entrada e de breakout.
+      const ds1 = m.partida.distancia_subaquatico_m, ts1 = m.partida.tempo_subaquatico_s, vs1 = m.partida.velocidade_subaquatico_ms;
+      const ds2 = mPB ? mPB.partida.distancia_subaquatico_m : undefined;
+      const ts2 = mPB ? mPB.partida.tempo_subaquatico_s : undefined;
+      const vs2 = mPB ? mPB.partida.velocidade_subaquatico_ms : undefined;
+      if (vs1 !== null && vs1 !== undefined) {
+        html += renderRepRow('Distância subaquática', ds1, ds2, function(v) { return fmtNum(v, 2, ' m'); }, true, labelSerie1, labelSerie2);
+        html += renderRepRow('Tempo subaquático', ts1, ts2, function(v) { return fmtNum(v, 2, ' s'); }, false, labelSerie1, labelSerie2);
+        html += renderRepRow('Velocidade subaquática', vs1, vs2, function(v) { return fmtNum(v, 2, ' m/s'); }, true, labelSerie1, labelSerie2);
+      }
     }
   });
   html += '</div>';
 
   if (m.seg50) {
     const seg50PB = mPB ? mPB.seg50 : null;
-    html += '<div class="rep-card"><div class="rep-card-title">Segmentos da prova (50m)</div><div class="rep-card-desc">Divisão em três fases</div>';
+    html += '<div class="rep-card"><div class="rep-card-title">Segmentos da prova (50m)</div><div class="rep-card-desc">Divisão em três fases</div>' + renderRepRowHeader(labelSerie1, seg50PB ? labelSerie2 : null);
     html += renderRepRow('Até aos 15m', m.seg50.ate15m, seg50PB ? seg50PB.ate15m : undefined, fmtTempo, false, labelSerie1, labelSerie2);
     html += renderRepRow('Nado (15m–45m)', m.seg50.nadoCentral, seg50PB ? seg50PB.nadoCentral : undefined, fmtTempo, false, labelSerie1, labelSerie2);
     html += renderRepRow('Chegada (últimos 5m)', m.seg50.chegada, seg50PB ? seg50PB.chegada : undefined, fmtTempo, false, labelSerie1, labelSerie2);
     html += '</div>';
   } else if (m.tempoChegada5m !== null) {
-    html += '<div class="rep-card"><div class="rep-card-title">Chegada</div><div class="rep-card-desc">Tempo dos últimos 5m antes de tocar na parede</div>';
+    html += '<div class="rep-card"><div class="rep-card-title">Chegada</div><div class="rep-card-desc">Tempo dos últimos 5m antes de tocar na parede</div>' + renderRepRowHeader(labelSerie1, mPB ? labelSerie2 : null);
     html += renderRepRow('Últimos 5m', m.tempoChegada5m, mPB ? mPB.tempoChegada5m : undefined, fmtTempo, false, labelSerie1, labelSerie2);
     html += '</div>';
   }
 
   if (m.mediaParcial50 !== null || m.mediaParcial100 !== null) {
-    html += '<div class="rep-card"><div class="rep-card-title">Médias de parciais</div><div class="rep-card-desc">Referência para regularidade de ritmo</div>';
+    html += '<div class="rep-card"><div class="rep-card-title">Médias de parciais</div><div class="rep-card-desc">Referência para regularidade de ritmo</div>' + renderRepRowHeader(labelSerie1, mPB ? labelSerie2 : null);
     if (m.mediaParcial50 !== null) {
       html += renderRepRow('Média parcial 50m', m.mediaParcial50, mPB ? mPB.mediaParcial50 : undefined, fmtTempo, false, labelSerie1, labelSerie2);
     }
@@ -3449,7 +3538,7 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
 
   if (m.totalBracadas !== null) {
     const tamStr = (an.tamanhoPiscina || 50) + 'm';
-    html += '<div class="rep-card"><div class="rep-card-title">Braçadas</div><div class="rep-card-desc">Totais e média por segmento de ' + tamStr + '</div>';
+    html += '<div class="rep-card"><div class="rep-card-title">Braçadas</div><div class="rep-card-desc">Totais e média por segmento de ' + tamStr + '</div>' + renderRepRowHeader(labelSerie1, mPB ? labelSerie2 : null);
     html += renderRepRow('Total de braçadas na prova', m.totalBracadas, mPB ? mPB.totalBracadas : undefined, function(v) { return fmtNum(v, 1, ''); }, false, labelSerie1, labelSerie2);
     html += renderRepRow('Média por segmento (' + tamStr + ')', m.mediaBracadasPorSegmento, mPB ? mPB.mediaBracadasPorSegmento : undefined, function(v) { return fmtNum(v, 1, ''); }, false, labelSerie1, labelSerie2);
     html += '</div>';
@@ -3523,8 +3612,13 @@ function renderCompararRelatorio() {
 
   const nome1 = item1.swimmer.nome, nome2 = item2.swimmer.nome;
   const mesmoNadador = item1.swimmer.id === item2.swimmer.id;
-  const label1 = mesmoNadador ? (nome1 + ' · ' + fmtData(item1.analise.dataProva || item1.analise.criadoEm)) : nome1;
-  const label2 = mesmoNadador ? (nome2 + ' · ' + fmtData(item2.analise.dataProva || item2.analise.criadoEm)) : nome2;
+  const fmtLabelComparacao = function(nome, an) {
+    let partes = [fmtData(an.dataProva || an.criadoEm)];
+    if (an.localProva) partes.push(an.localProva);
+    return nome + ' · ' + partes.join(' · ');
+  };
+  const label1 = mesmoNadador ? fmtLabelComparacao(nome1, item1.analise) : nome1;
+  const label2 = mesmoNadador ? fmtLabelComparacao(nome2, item2.analise) : nome2;
   const provaLabel = ESTILOS_LABEL(item1.analise.estilo) + ' ' + item1.analise.distancia + 'm · piscina ' + (item1.analise.tamanhoPiscina || 50) + 'm';
 
   let html = '<div class="rep-header">';
@@ -3770,23 +3864,21 @@ function exportarRelatorioPDF() {
       return;
     }
     const el = todosOsBlocos[idx];
-    html2canvas(el, { backgroundColor: '#f4f6f8', scale: 3 }).then(function (canvas) {
+    html2canvas(el, { backgroundColor: '#f4f6f8', scale: 2 }).then(function (canvas) {
       const imgW = usableW;
       const imgH = (canvas.height / canvas.width) * imgW;
 
-      // se este bloco não couber no espaço restante da página atual, passa
-      // para a página seguinte — garante que nenhum cartão é cortado a meio
       if (!primeiraImagemDaPagina && (cursorY + imgH) > (margin + usableH)) {
         pdf.addPage();
         cursorY = margin;
         primeiraImagemDaPagina = true;
       }
-      // se o próprio bloco for mais alto do que a página inteira, encolhe-o
-      // para caber numa página (caso raro, ex: gráfico com legenda enorme)
       const imgHFinal = Math.min(imgH, usableH);
       const imgWFinal = imgHFinal === imgH ? imgW : imgW * (imgHFinal / imgH);
 
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, cursorY, imgWFinal, imgHFinal);
+      // JPEG com qualidade 0.85 em vez de PNG: visualmente indistinguível
+      // mas tipicamente 5-10x mais pequeno, reduzindo drasticamente o PDF.
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', margin, cursorY, imgWFinal, imgHFinal);
       cursorY += imgHFinal + 5;
       primeiraImagemDaPagina = false;
       capturarEAdicionar(idx + 1);
