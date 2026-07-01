@@ -3757,6 +3757,17 @@ function afterRenderRelatorio() {
 // a partir de duas séries de métricas, com os nomes de legenda indicados.
 // Reutilizada tanto pelo relatório normal (Atual vs Melhor registo) como
 // pelo relatório comparativo (nadador/data vs nadador/data).
+// Constrói a lista de labels que cobre ambas as séries, mantendo a ordem
+// original. Usado para alinhar corretamente séries esparsas (ex: respirações
+// onde apenas alguns segmentos foram preenchidos).
+function unirLabels(serie1, serie2) {
+  const vistos = {};
+  const resultado = [];
+  (serie1 || []).forEach(function(e) { if (!vistos[e.label]) { vistos[e.label] = true; resultado.push(e.label); } });
+  (serie2 || []).forEach(function(e) { if (!vistos[e.label]) { vistos[e.label] = true; resultado.push(e.label); } });
+  return resultado;
+}
+
 function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
   chartInstances.forEach(function (c) { c.destroy(); });
   chartInstances = [];
@@ -3860,13 +3871,20 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
   mkLineBar('chart_bracadas', labelsB50, m.porBloco50.map(function(b){return b.bracadas !== null ? +b.bracadas.toFixed(1) : null;}), mPB ? mPB.porBloco50.map(function(b){return b.bracadas !== null ? +b.bracadas.toFixed(1) : null;}) : null, 'bar', ' br.', { formatador: fmtEixoInt, beginAtZero: true });
 
   if (m.ondulacoes.length) {
-    mkLineBar('chart_ond', m.ondulacoes.map(function(o){return o.label;}), m.ondulacoes.map(function(o){return o.valor;}),
-      mPB ? mPB.ondulacoes.map(function(o){return o.valor;}) : null, 'bar', ' ond.', { formatador: fmtEixoInt, beginAtZero: true });
+    // Alinhar pelos labels de ambas as séries (podem ter segmentos diferentes)
+    const labelsOnd = unirLabels(m.ondulacoes, mPB ? mPB.ondulacoes : null);
+    mkLineBar('chart_ond', labelsOnd,
+      labelsOnd.map(function(l){ const e = m.ondulacoes.find(function(o){return o.label===l;}); return e ? e.valor : null; }),
+      mPB ? labelsOnd.map(function(l){ const e = mPB.ondulacoes.find(function(o){return o.label===l;}); return e ? e.valor : null; }) : null,
+      'bar', ' ond.', { formatador: fmtEixoInt, beginAtZero: true });
   }
 
   if (m.respiracoes.length) {
-    mkLineBar('chart_resp', m.respiracoes.map(function(r){return r.label;}), m.respiracoes.map(function(r){return r.valor;}),
-      mPB ? mPB.respiracoes.map(function(r){return r.valor;}) : null, 'bar', ' resp.', { formatador: fmtEixoInt, beginAtZero: true });
+    const labelsResp = unirLabels(m.respiracoes, mPB ? mPB.respiracoes : null);
+    mkLineBar('chart_resp', labelsResp,
+      labelsResp.map(function(l){ const e = m.respiracoes.find(function(r){return r.label===l;}); return e ? e.valor : null; }),
+      mPB ? labelsResp.map(function(l){ const e = mPB.respiracoes.find(function(r){return r.label===l;}); return e ? e.valor : null; }) : null,
+      'bar', ' resp.', { formatador: fmtEixoInt, beginAtZero: true });
   }
 
   mkLineBar('chart_parc50', m.parciais50.map(function(p){return p.metros+'m';}), m.parciais50.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}),
