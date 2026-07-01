@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>SwimLab — Análise de Provas</title>
+<title>SwimMin Lab — Análise de Provas</title>
 <style>
 :root {
   --bg:        #07111f;
@@ -549,7 +549,7 @@ html:not(.light-mode) input[type="date"] { color-scheme: dark; }
   <button class="back-btn" id="backBtn" style="display:none">←</button>
   <div class="logo-mark">SL</div>
   <div class="logo-text">
-    <h1 id="headerTitle">SwimLab</h1>
+    <h1 id="headerTitle">SwimMin Lab</h1>
     <span id="headerSubtitle">Análise de provas</span>
   </div>
   <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTema()" aria-label="Alternar tema">
@@ -1730,7 +1730,7 @@ function render() {
 
   if (state.screen === 'lista') {
     backBtn.style.display = 'none';
-    title.textContent = 'SwimLab';
+    title.textContent = 'SwimMin Lab';
     sub.textContent = 'Análise de provas';
     app.innerHTML = renderListaNadadores();
   } else if (state.screen === 'compararSelecao') {
@@ -1994,6 +1994,7 @@ function renderPerfil() {
 
   html += '<div class="card"><div class="card-title">Ações</div><div class="btn-row">' +
     '<button class="btn btn-primary" onclick="nav(\'novaAnalise\',{swimmerId:\'' + sw.id + '\'})">+ Nova análise</button>' +
+    '<button class="btn btn-ghost btn-sm" onclick="importarDadosAnalise(\'' + sw.id + '\')" style="flex:0 0 auto">Importar dados</button>' +
     '<button class="btn btn-ghost btn-sm" onclick="apagarNadador(\'' + sw.id + '\')" style="flex:0 0 auto">Apagar perfil</button>' +
     '</div></div>';
 
@@ -2021,7 +2022,7 @@ function renderPerfil() {
       const isPB = a.id === melhorId && g.lista.length > 1;
       html += '<div class="history-row">' +
         '<div class="history-item' + (isPB ? ' is-pb' : '') + '" onclick="nav(\'relatorio\',{swimmerId:\'' + sw.id + '\',verAnaliseId:\'' + a.id + '\',compararPB:false})">' +
-        '<div><div class="hi-date">' + fmtData(a.dataProva || a.criadoEm) + (isPB ? '<span class="hi-pb-tag"> · melhor registo</span>' : '') + '</div>' +
+        '<div><div class="hi-date">' + fmtData(a.dataProva || a.criadoEm) + (a.localProva ? ' · ' + escapeHtml(a.localProva) : '') + (isPB ? '<span class="hi-pb-tag"> · melhor registo</span>' : '') + '</div>' +
         '<div class="hi-time">' + fmtTempo(a.tempoTotal) + '</div></div>' +
         '<div class="chevron">›</div></div>' +
         '<button class="hi-delete-btn" onclick="apagarAnaliseDoHistorico(\'' + sw.id + '\',\'' + a.id + '\')" aria-label="Apagar análise">' +
@@ -3346,9 +3347,89 @@ function renderRelatorio() {
     '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="exportarRelatorio()">Imagem</button>' +
     '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="exportarRelatorioPDF()">PDF</button>' +
     '</div>';
+  html += '<button class="rep-btn rep-btn-ghost" style="margin-top:10px" onclick="exportarDadosAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Exportar dados (partilhar)</button>';
   html += '<button class="rep-btn rep-btn-danger" onclick="apagarAnaliseAtual()">Apagar esta análise</button>';
 
   return html;
+}
+
+// ---- EXPORTAR / IMPORTAR DADOS DE ANÁLISE ----
+// O ficheiro exportado é um JSON com todos os dados em bruto (dadosBrutos),
+// mais os metadados da análise (nadador, prova, data, local). Quem recebe
+// pode importar directamente para o seu SwimMin Lab, para um nadador à escolha.
+
+function exportarDadosAnalise(swimmerId, analiseId) {
+  const sw = getSwimmer(swimmerId);
+  const an = sw ? sw.analises.find(function(a) { return a.id === analiseId; }) : null;
+  if (!an) { toast('Análise não encontrada'); return; }
+
+  const pacote = {
+    _swimlab: true,           // marca de identificação do ficheiro
+    _versao: '1',
+    nadador: {
+      nome: sw.nome,
+      sexo: sw.sexo || null,
+      dataNascimento: sw.dataNascimento || null,
+    },
+    analise: {
+      estilo: an.estilo,
+      distancia: an.distancia,
+      tamanhoPiscina: an.tamanhoPiscina || 50,
+      dataProva: an.dataProva || null,
+      localProva: an.localProva || null,
+      dadosBrutos: an.dadosBrutos,
+    },
+  };
+
+  const json = JSON.stringify(pacote, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const nomeNadador = sw.nome.replace(/\s+/g, '_');
+  const nomeProva = an.estilo + an.distancia + 'm_P' + (an.tamanhoPiscina || 50);
+  const data = (an.dataProva || '').replace(/-/g, '');
+  link.download = 'swimlab_' + nomeNadador + '_' + nomeProva + (data ? '_' + data : '') + '.json';
+  link.href = url;
+  link.click();
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+  toast('Dados exportados — partilha o ficheiro .json');
+}
+
+function importarDadosAnalise(swimmerId) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
+  input.onchange = function() {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      let pacote;
+      try {
+        pacote = JSON.parse(e.target.result);
+      } catch (err) {
+        toast('Ficheiro inválido — não é um JSON válido'); return;
+      }
+      if (!pacote._swimlab || !pacote.analise) {
+        toast('Ficheiro inválido — não é um ficheiro SwimMin Lab'); return;
+      }
+      const a = pacote.analise;
+      const metrics = calcularMetricas(a.estilo, a.distancia, a.dadosBrutos, a.tamanhoPiscina);
+      const analise = addAnalise(swimmerId, {
+        estilo: a.estilo,
+        distancia: a.distancia,
+        tamanhoPiscina: a.tamanhoPiscina || 50,
+        dadosBrutos: a.dadosBrutos,
+        tempoTotal: metrics.tempoTotal,
+        dataProva: a.dataProva || null,
+        localProva: a.localProva || null,
+      });
+      toast('Análise importada com sucesso');
+      nav('relatorio', { swimmerId: swimmerId, verAnaliseId: analise.id, compararPB: false });
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 
 function confirmarGuardarRelatorio() {
