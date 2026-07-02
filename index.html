@@ -2321,13 +2321,25 @@ function renderFormularioData() {
   html += '<div class="field"><label>Data da prova</label><input type="date" id="dataProvaInput" value="' + state.dataProva + '" oninput="onDataProvaInput(this)"></div>';
   html += '<div class="field" style="margin-top:10px"><label>Local da prova</label><input type="text" placeholder="ex: Piscina Municipal de Lisboa" value="' + escapeHtml(state.localProva || '') + '" oninput="onLocalProvaInput(this)" maxlength="100"></div>';
 
-  html += '<div class="compare-toggle" style="margin-top:18px"><div><div class="ct-label">Incluir ondulações</div>' +
-    '<div class="ct-sub">Conta movimentos ondulatórios pós-partida e pós-viragem</div></div>' +
-    '<label class="switch"><input type="checkbox" ' + (state.incluirOndulacoes ? 'checked' : '') + ' onchange="toggleIncluirOndulacoes(this.checked)"><span class="slider"></span></label></div>';
+  const estilo = state.novaAnalise ? state.novaAnalise.estilo : null;
+  const éBrucos = estilo === 'BRUCOS';
+  const éCostasOuBrucos = estilo === 'COSTAS' || estilo === 'BRUCOS';
 
-  html += '<div class="compare-toggle"><div><div class="ct-label">Incluir respirações</div>' +
-    '<div class="ct-sub">Conta respirações por troço e se respirou perto da chegada</div></div>' +
-    '<label class="switch"><input type="checkbox" ' + (state.incluirRespiracoes ? 'checked' : '') + ' onchange="toggleIncluirRespiracoes(this.checked)"><span class="slider"></span></label></div>';
+  // Forçar estado correto para estilos onde estas opções não se aplicam
+  if (éBrucos) state.incluirOndulacoes = false;
+  if (éCostasOuBrucos) state.incluirRespiracoes = false;
+
+  if (!éBrucos) {
+    html += '<div class="compare-toggle" style="margin-top:18px"><div><div class="ct-label">Incluir ondulações</div>' +
+      '<div class="ct-sub">Conta movimentos ondulatórios pós-partida e pós-viragem</div></div>' +
+      '<label class="switch"><input type="checkbox" ' + (state.incluirOndulacoes ? 'checked' : '') + ' onchange="toggleIncluirOndulacoes(this.checked)"><span class="slider"></span></label></div>';
+  }
+
+  if (!éCostasOuBrucos) {
+    html += '<div class="compare-toggle"><div><div class="ct-label">Incluir respirações</div>' +
+      '<div class="ct-sub">Conta respirações por troço e se respirou perto da chegada</div></div>' +
+      '<label class="switch"><input type="checkbox" ' + (state.incluirRespiracoes ? 'checked' : '') + ' onchange="toggleIncluirRespiracoes(this.checked)"><span class="slider"></span></label></div>';
+  }
 
   html += '<button class="btn btn-primary" style="margin-top:8px" onclick="avancarParaTempos()">Continuar para tempos →</button>';
   return html;
