@@ -86,19 +86,66 @@ html, body { transition: background-color .2s ease, color .2s ease; }
   --rep-gold:    #e0a721;
 }
 #app.report-mode { background: var(--rep-bg2); margin: -18px; padding: 14px; }
-.rep-header {
-  background: var(--rep-blue2); color: white; border-radius: 16px; padding: 22px 20px;
-  margin-bottom: 14px; text-align: center;
+
+@media (min-width: 600px) {
+  .container { max-width: 780px; }
+  #app.report-mode {
+    max-width: 780px; margin: 0 auto;
+    padding: 20px; border-radius: 12px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.15);
+  }
+  body:has(#app.report-mode) { background: var(--rep-bg2); }
 }
-.rep-header .rep-swimmer-name { font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.92); }
-.rep-header .rep-prova-label { font-size: 13px; color: var(--rep-gold); font-weight: 700; margin-top: 2px; margin-bottom: 10px; }
-.rep-header .rep-time { font-size: 46px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
-.rep-header .rep-sub { font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 8px; }
+@media (min-width: 900px) {
+  .container { max-width: 860px; }
+  #app.report-mode { max-width: 860px; padding: 28px; }
+}
+.rep-header {
+  background: var(--rep-blue2); color: white; border-radius: 16px;
+  padding: 20px 16px 20px 20px;
+  margin-bottom: 14px; overflow: hidden; position: relative;
+}
+.rep-header-layout {
+  display: flex; align-items: stretch; gap: 12px;
+}
+.rep-header-content {
+  flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 0;
+}
+.rep-header-photo {
+  flex-shrink: 0; width: 130px; display: flex; align-items: flex-end; justify-content: center;
+  margin: -20px -16px -20px 0; overflow: hidden;
+}
+.rep-header-photo img {
+  width: 130px; height: 160px; object-fit: cover; object-position: top center;
+  border-radius: 0 16px 16px 0;
+}
+.rep-header-photo-initials {
+  width: 100px; height: 100px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); display: flex; align-items: center;
+  justify-content: center; font-size: 36px; font-weight: 800; color: white;
+  margin: auto 8px;
+}
+.rep-header .rep-swimmer-name {
+  font-size: 28px; font-weight: 900; color: var(--rep-gold);
+  text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;
+  word-break: break-word;
+}
+.rep-header .rep-prova-label {
+  font-size: 14px; color: rgba(255,255,255,0.9); font-weight: 700;
+  margin-top: 6px; margin-bottom: 4px;
+}
+.rep-header .rep-time {
+  font-size: 52px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums;
+  margin: 4px 0;
+}
+.rep-header .rep-sub { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 6px; }
 .rep-header .rep-pb {
-  display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
   background: var(--rep-gold); color: #4a3300; border-radius: 20px; padding: 5px 14px;
   font-size: 12px; font-weight: 700;
 }
+.rep-athlete-photo { display: none; } /* substituído pelo novo layout */
+.rep-athlete-initials { display: none; }
 .rep-vs-header { display: flex; align-items: center; justify-content: center; gap: 18px; }
 .rep-vs-header .rep-vs-side { flex: 1; text-align: center; }
 .rep-vs-header .rep-vs-name { font-size: 12px; color: rgba(255,255,255,0.7); margin-bottom: 4px; font-weight: 600; }
@@ -270,16 +317,6 @@ input, select { font-family: inherit; }
 .photo-crop-btn-cancel { background: rgba(255,255,255,0.12); color: white; }
 
 /* Foto no relatório */
-.rep-athlete-photo {
-  width: 80px; height: 80px; border-radius: 50%; object-fit: cover;
-  border: 3px solid rgba(255,255,255,0.3); margin: 0 auto 10px; display: block;
-}
-.rep-athlete-initials {
-  width: 80px; height: 80px; border-radius: 50%;
-  background: rgba(255,255,255,0.15); display: flex; align-items: center;
-  justify-content: center; font-size: 28px; font-weight: 800; color: white;
-  margin: 0 auto 10px;
-}
 
 /* Avatar no perfil */
 .perfil-avatar {
@@ -882,7 +919,13 @@ function loadDB() {
   }
 }
 function saveDB(db) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+  } catch(e) {
+    // localStorage cheio — acontece quando há muitas fotos guardadas
+    console.error('saveDB: localStorage cheio', e);
+    toast('Não foi possível guardar — armazenamento do browser cheio.');
+  }
 }
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -1763,6 +1806,8 @@ const state = {
     waveform: null,             // Float32Array com amplitudes normalizadas (0-1) por frame de 50ms
     waveformDuracao: null,      // duração total do áudio em segundos
     waveformSugestao: null,     // tempo sugerido automaticamente para a partida (segundos)
+    audioCtx: null,             // AudioContext reutilizado entre chamadas
+    audioSource: null,          // MediaElementSourceNode reutilizado
   },
   calibDistancia: {
     ativo: false,           // true quando o overlay de calibração de distância está aberto
@@ -2152,9 +2197,20 @@ function renderPerfil() {
 let _cropState = null; // estado interno do crop
 
 function abrirUploadFoto(swimmerId) {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
+  // No Safari/iOS o input[type=file] tem de estar inserido no DOM antes
+  // de ser clicado — criá-lo apenas em memória e chamar .click() é bloqueado.
+  let input = document.getElementById('_fotoUploadInput');
+  if (!input) {
+    input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.id = '_fotoUploadInput';
+    input.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0;';
+    document.body.appendChild(input);
+  }
+  // Remover listener anterior e adicionar novo
+  input.onchange = null;
+  input.value = '';
   input.onchange = function () {
     const file = input.files && input.files[0];
     if (!file) return;
@@ -2186,8 +2242,8 @@ function mostrarCropFoto(dataUrl, swimmerId) {
     const root = document.getElementById('modalRoot');
     root.innerHTML =
       '<div class="photo-crop-overlay" id="cropOverlay">' +
-        '<div class="photo-crop-title">Ajusta o círculo à zona que queres mostrar</div>' +
-        '<div class="photo-crop-desc">Arrasta o círculo para mover · Arrasta a borda para redimensionar</div>' +
+        '<div class="photo-crop-title">Ajusta a área que queres mostrar</div>' +
+        '<div class="photo-crop-desc">Arrasta para mover · Arrasta a borda para redimensionar · A foto aparece rectangular no relatório</div>' +
         '<canvas id="cropCanvas" class="photo-crop-canvas" width="' + W + '" height="' + H + '"></canvas>' +
         '<div class="photo-crop-btns">' +
           '<button class="photo-crop-btn photo-crop-btn-cancel" onclick="cancelarCropFoto()">Cancelar</button>' +
@@ -2281,26 +2337,26 @@ function ligarEventosCrop(canvas) {
 function confirmarCropFoto() {
   if (!_cropState) return;
   const { img, cx, cy, r, escala } = _cropState;
-  // Exportar o crop em resolução original (não na escala de visualização)
-  const tamanho = 200; // px do avatar final
-  const offscreen = document.createElement('canvas');
-  offscreen.width = tamanho; offscreen.height = tamanho;
-  const ctx = offscreen.getContext('2d');
-  ctx.beginPath();
-  ctx.arc(tamanho / 2, tamanho / 2, tamanho / 2, 0, Math.PI * 2);
-  ctx.clip();
-  // Calcular coordenadas em pixels reais da imagem original
-  const srcX = (cx - r) / escala;
-  const srcY = (cy - r) / escala;
-  const srcS = (r * 2) / escala;
-  ctx.drawImage(img, srcX, srcY, srcS, srcS, 0, 0, tamanho, tamanho);
-  const fotoBase64 = offscreen.toDataURL('image/jpeg', 0.85);
 
-  const sw = getSwimmer(_cropState.swimmerId);
-  if (sw) {
-    sw.foto = fotoBase64;
-    saveDB();
-  }
+  const srcX = Math.max(0, (cx - r) / escala);
+  const srcY = Math.max(0, (cy - r) / escala);
+  const srcW = Math.min(img.width - srcX, (r * 2) / escala);
+  const srcH = Math.min(img.height - srcY, (r * 2) / escala);
+  const lado = Math.round(Math.max(srcW, srcH));
+
+  const offscreen = document.createElement('canvas');
+  offscreen.width = lado;
+  offscreen.height = lado;
+  const ctx = offscreen.getContext('2d');
+  // PNG preserva transparência — sem fundo preto
+  ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, lado, lado);
+  const fotoBase64 = offscreen.toDataURL('image/png');
+
+  const db = loadDB();
+  const sw = db.swimmers.find(function(s) { return s.id === _cropState.swimmerId; });
+  if (!sw) { toast('Nadador não encontrado'); _cropState = null; return; }
+  sw.foto = fotoBase64;
+  saveDB(db);
   _cropState = null;
   document.getElementById('modalRoot').innerHTML = '';
   render();
@@ -2329,25 +2385,29 @@ function extrairWaveform() {
   if (!state.video.objectUrl || state.video.waveform) return;
   const v = getVideoEl();
   if (!v) return;
-  document.getElementById('waveformArea').innerHTML = '<div class="waveform-analyzing">A analisar o áudio...</div>';
+
+  const areaEl = document.getElementById('waveformArea');
+  areaEl.innerHTML = '<div class="waveform-analyzing">A analisar o áudio...</div>';
 
   fetch(state.video.objectUrl)
     .then(function(r) { return r.arrayBuffer(); })
     .then(function(buf) {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      return ctx.decodeAudioData(buf);
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) throw new Error('não suportado');
+      const ctx = new AudioCtx();
+      return ctx.decodeAudioData(buf).then(function(decoded) {
+        ctx.close();
+        return decoded;
+      });
     })
     .then(function(audioBuf) {
-      // Misturar todos os canais num mono
-      const duracao = audioBuf.duration;
+      const frameMs = 50;
       const sr = audioBuf.sampleRate;
-      const frameMs = 50; // um ponto por cada 50ms
       const frameSize = Math.round(sr * frameMs / 1000);
       const nFrames = Math.floor(audioBuf.length / frameSize);
-      const waveform = new Float32Array(nFrames);
       const nCh = audioBuf.numberOfChannels;
+      const waveform = new Float32Array(nFrames);
 
-      // Calcular RMS por frame (root mean square = energia do som)
       for (let f = 0; f < nFrames; f++) {
         let rms = 0;
         for (let ch = 0; ch < nCh; ch++) {
@@ -2360,23 +2420,22 @@ function extrairWaveform() {
         waveform[f] = Math.sqrt(rms / (frameSize * nCh));
       }
 
-      // Normalizar para 0-1
       const maxVal = Math.max.apply(null, Array.from(waveform));
-      if (maxVal > 0) { for (let i = 0; i < nFrames; i++) waveform[i] /= maxVal; }
+      if (maxVal > 0) { for (let i = 0; i < waveform.length; i++) waveform[i] /= maxVal; }
 
       state.video.waveform = waveform;
-      state.video.waveformDuracao = duracao;
-
-      // Detetar automaticamente o sinal de partida
-      state.video.waveformSugestao = detetarSinalPartida(waveform, duracao);
-
+      state.video.waveformDuracao = audioBuf.duration;
+      state.video.waveformSugestao = detetarSinalPartida(waveform, audioBuf.duration);
       renderVideoMarkSection();
     })
     .catch(function(err) {
-      console.warn('Waveform: não foi possível analisar o áudio', err);
-      document.getElementById('waveformArea').innerHTML = '<div class="waveform-analyzing">Não foi possível analisar o áudio deste vídeo.</div>';
+      console.warn('Waveform não disponível:', err);
+      // Mostrar waveform manual — sem análise automática, mas o utilizador
+      // pode usar o vídeo normalmente para identificar a partida
+      areaEl.innerHTML = '<div class="waveform-analyzing">Análise de áudio não disponível neste browser ou formato de vídeo. Avança o vídeo manualmente até ao frame da partida.</div>';
     });
 }
+
 
 // Detetar o sinal de partida: procura um pico breve e abrupto (apito/buzzer)
 // após um período de silêncio relativo, ignorando sons prolongados como vozes.
@@ -3941,18 +4000,25 @@ function renderRelatorio() {
   if (sw.sexo) infoLinha.push(fmtSexo(sw.sexo));
   if (idadeNaProva) infoLinha.push(fmtIdade(idadeNaProva));
 
-  let html = '<div class="rep-header">' +
-    (sw.foto
-      ? '<img src="' + sw.foto + '" class="rep-athlete-photo">'
-      : '<div class="rep-athlete-initials">' + iniciais(sw.nome) + '</div>') +
+  let html = '<div class="rep-header"><div class="rep-header-layout">' +
+    '<div class="rep-header-content">' +
     '<div class="rep-swimmer-name">' + escapeHtml(sw.nome) + '</div>' +
     '<div class="rep-prova-label">' + escapeHtml(provaLabel) + '</div>' +
     '<div class="rep-time">' + fmtTempo(metrics.tempoTotal) + '</div>' +
     '<div class="rep-sub">' + escapeHtml(infoLinha.join(' · ')) + '</div>';
   if (temOutras) {
-    html += éPB ? '<div class="rep-pb">Melhor registo nesta prova</div>' : '<div class="rep-sub" style="margin-top:8px">Melhor registo: ' + fmtTempo(melhor.tempoTotal) + '</div>';
+    html += éPB ? '<div class="rep-pb">Melhor registo nesta prova</div>' : '<div class="rep-sub" style="margin-top:6px">Melhor registo: ' + fmtTempo(melhor.tempoTotal) + '</div>';
   }
-  html += '</div>';
+  html += '</div>'; // fim rep-header-content
+  // Foto à direita — grande e sem círculo, como no mockup
+  html += '<div class="rep-header-photo">';
+  if (sw.foto) {
+    html += '<img src="' + sw.foto + '">';
+  } else {
+    html += '<div class="rep-header-photo-initials">' + iniciais(sw.nome) + '</div>';
+  }
+  html += '</div>'; // fim rep-header-photo
+  html += '</div></div>'; // fim rep-header-layout + rep-header
 
   if (temOutras) {
     html += '<div class="rep-toggle"><div><div class="ct-label">Comparar com melhor registo</div>' +
@@ -4222,8 +4288,11 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
     }
   }
 
+  const éBilateral = an.estilo === 'MARIPOSA' || an.estilo === 'BRUCOS';
   html += chartCard('chart_ciclos50', 'Ciclos de braçada', 'contagem a cada ' + (an.tamanhoPiscina || 50) + 'm');
-  html += chartCard('chart_bracadas', 'Braçadas', 'contagem por segmento');
+  if (!éBilateral) {
+    html += chartCard('chart_bracadas', 'Braçadas', 'contagem por segmento');
+  }
 
   if (m.ondulacoes.length) {
     html += chartCard('chart_ond', 'Movimentos ondulatórios', 'contagem pós-partida e pós-viragem');
@@ -4297,7 +4366,7 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
     html += '</div>';
   }
 
-  if (m.totalBracadas !== null) {
+  if (m.totalBracadas !== null && !éBilateral) {
     const tamStr = (an.tamanhoPiscina || 50) + 'm';
     html += '<div class="rep-card"><div class="rep-card-title">Braçadas</div><div class="rep-card-desc">Totais e média por segmento de ' + tamStr + '</div>' + renderRepRowHeader(labelSerie1, mPB ? labelSerie2 : null);
     html += renderRepRow('Total de braçadas na prova', m.totalBracadas, mPB ? mPB.totalBracadas : undefined, function(v) { return fmtNum(v, 1, ''); }, false, labelSerie1, labelSerie2);
@@ -4547,7 +4616,9 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
 
   const labelsB50 = m.porBloco50.map(function (b) { return b.label; });
   mkLineBar('chart_ciclos50', labelsB50, m.porBloco50.map(function(b){return b.ciclos;}), mPB ? mPB.porBloco50.map(function(b){return b.ciclos;}) : null, 'bar', ' ciclos', { formatador: fmtEixoInt, beginAtZero: true });
-  mkLineBar('chart_bracadas', labelsB50, m.porBloco50.map(function(b){return b.bracadas !== null ? +b.bracadas.toFixed(1) : null;}), mPB ? mPB.porBloco50.map(function(b){return b.bracadas !== null ? +b.bracadas.toFixed(1) : null;}) : null, 'bar', ' br.', { formatador: fmtEixoInt, beginAtZero: true });
+  if (an.estilo !== 'MARIPOSA' && an.estilo !== 'BRUCOS') {
+    mkLineBar('chart_bracadas', labelsB50, m.porBloco50.map(function(b){return b.bracadas !== null ? +b.bracadas.toFixed(1) : null;}), mPB ? mPB.porBloco50.map(function(b){return b.bracadas !== null ? +b.bracadas.toFixed(1) : null;}) : null, 'bar', ' br.', { formatador: fmtEixoInt, beginAtZero: true });
+  }
 
   if (m.ondulacoes.length) {
     // Alinhar pelos labels de ambas as séries (podem ter segmentos diferentes)
