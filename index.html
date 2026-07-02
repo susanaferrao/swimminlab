@@ -252,7 +252,45 @@ input, select { font-family: inherit; }
   background: linear-gradient(135deg, var(--accent), var(--green2));
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 16px; color: #04141f;
+  overflow: hidden; object-fit: cover;
 }
+.swimmer-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+/* Crop de foto circular */
+.photo-crop-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 500;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+}
+.photo-crop-title { color: white; font-size: 16px; font-weight: 700; }
+.photo-crop-desc { color: rgba(255,255,255,0.6); font-size: 13px; text-align: center; padding: 0 20px; }
+.photo-crop-canvas { border-radius: 12px; touch-action: none; max-width: 90vw; max-height: 60vh; }
+.photo-crop-btns { display: flex; gap: 12px; }
+.photo-crop-btn { padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 700; border: none; }
+.photo-crop-btn-confirm { background: var(--accent); color: #04141f; }
+.photo-crop-btn-cancel { background: rgba(255,255,255,0.12); color: white; }
+
+/* Foto no relatório */
+.rep-athlete-photo {
+  width: 80px; height: 80px; border-radius: 50%; object-fit: cover;
+  border: 3px solid rgba(255,255,255,0.3); margin: 0 auto 10px; display: block;
+}
+.rep-athlete-initials {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); display: flex; align-items: center;
+  justify-content: center; font-size: 28px; font-weight: 800; color: white;
+  margin: 0 auto 10px;
+}
+
+/* Avatar no perfil */
+.perfil-avatar {
+  width: 72px; height: 72px; border-radius: 50%; overflow: hidden;
+  background: linear-gradient(135deg, var(--accent), var(--green2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; font-weight: 800; color: #04141f; flex-shrink: 0; cursor: pointer;
+  border: 2px solid var(--border);
+}
+.perfil-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.perfil-avatar-hint { font-size: 11px; color: var(--txt3); margin-top: 4px; text-align: center; }
 .swimmer-info { flex: 1; min-width: 0; }
 .swimmer-info .name { font-size: 16px; font-weight: 600; }
 .swimmer-info .meta { font-size: 12px; color: var(--txt3); margin-top: 2px; }
@@ -1826,7 +1864,7 @@ function renderListaNadadores() {
   html += '<button class="btn btn-ghost" style="margin-bottom:14px;font-size:13px;color:var(--txt3)" onclick="gerarAnaliseExemplo()">Ver exemplo de relatório</button>';
   swimmers.slice().sort(function(a,b){return a.nome.localeCompare(b.nome);}).forEach(function (s) {
     html += '<div class="swimmer-item" onclick="nav(\'perfil\',{swimmerId:\'' + s.id + '\'})">' +
-      '<div class="swimmer-avatar">' + iniciais(s.nome) + '</div>' +
+      avatarHtml(s, 44) +
       '<div class="swimmer-info"><div class="name">' + escapeHtml(s.nome) + '</div>' +
       '<div class="meta">' + s.analises.length + ' análise' + (s.analises.length === 1 ? '' : 's') + '</div></div>' +
       '<div class="chevron">›</div></div>';
@@ -2007,8 +2045,16 @@ function renderPerfil() {
 
   let html = '<div class="card">' +
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">' +
+    '<div style="display:flex;align-items:center;gap:14px">' +
+    '<div style="text-align:center">' +
+    '<div class="perfil-avatar" onclick="abrirUploadFoto(\'' + sw.id + '\')">' +
+    (sw.foto ? '<img src="' + sw.foto + '">' : iniciais(sw.nome)) +
+    '</div>' +
+    '<div class="perfil-avatar-hint">Alterar foto</div>' +
+    '</div>' +
     '<div><div class="card-title" style="margin-bottom:4px">Perfil</div>' +
     (infoLinha.length ? '<div style="font-size:13px;color:var(--txt2)">' + infoLinha.join(' · ') + '</div>' : '<div style="font-size:13px;color:var(--txt3)">Sexo e data de nascimento não definidos</div>') +
+    '</div>' +
     '</div>' +
     '<button class="btn btn-ghost btn-sm" onclick="abrirEditarNadador(\'' + sw.id + '\')">Editar</button>' +
     '</div></div>';
@@ -2082,6 +2128,182 @@ function renderPerfil() {
   });
 
   return html;
+}
+
+// ---- FOTO DO NADADOR ----
+// Upload + crop circular interativo (sem bibliotecas externas, usa Canvas API).
+// A foto é guardada como base64 JPEG no perfil do nadador (campo `foto`).
+
+let _cropState = null; // estado interno do crop
+
+function abrirUploadFoto(swimmerId) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = function () {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      mostrarCropFoto(e.target.result, swimmerId);
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+function mostrarCropFoto(dataUrl, swimmerId) {
+  const img = new Image();
+  img.onload = function () {
+    // Canvas de trabalho: max 400px de largura para não ser lento no iPad
+    const escala = Math.min(1, 380 / img.width, 500 / img.height);
+    const W = Math.round(img.width * escala);
+    const H = Math.round(img.height * escala);
+    const r = Math.round(Math.min(W, H) * 0.4); // raio inicial: 40% do menor lado
+    _cropState = {
+      img: img, swimmerId: swimmerId,
+      W: W, H: H, escala: escala,
+      cx: Math.round(W / 2), cy: Math.round(H / 2), r: r,
+      drag: false, dragType: null, dragStartX: 0, dragStartY: 0,
+      dragStartCx: 0, dragStartCy: 0, dragStartR: 0,
+    };
+
+    const root = document.getElementById('modalRoot');
+    root.innerHTML =
+      '<div class="photo-crop-overlay" id="cropOverlay">' +
+        '<div class="photo-crop-title">Ajusta o círculo à zona que queres mostrar</div>' +
+        '<div class="photo-crop-desc">Arrasta o círculo para mover · Arrasta a borda para redimensionar</div>' +
+        '<canvas id="cropCanvas" class="photo-crop-canvas" width="' + W + '" height="' + H + '"></canvas>' +
+        '<div class="photo-crop-btns">' +
+          '<button class="photo-crop-btn photo-crop-btn-cancel" onclick="cancelarCropFoto()">Cancelar</button>' +
+          '<button class="photo-crop-btn photo-crop-btn-confirm" onclick="confirmarCropFoto()">Usar esta zona</button>' +
+        '</div>' +
+      '</div>';
+
+    const canvas = document.getElementById('cropCanvas');
+    desenharCrop(canvas);
+    ligarEventosCrop(canvas);
+  };
+  img.src = dataUrl;
+}
+
+function desenharCrop(canvas) {
+  if (!canvas || !_cropState) return;
+  const { img, W, H, cx, cy, r } = _cropState;
+  const ctx = canvas.getContext('2d');
+  // Imagem de fundo escurecida
+  ctx.drawImage(img, 0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, 0, W, H);
+  // Recorte circular nítido
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.drawImage(img, 0, 0, W, H);
+  ctx.restore();
+  // Borda do círculo
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Alça de redimensionamento (pequeno círculo na borda direita)
+  ctx.beginPath();
+  ctx.arc(cx + r, cy, 8, 0, Math.PI * 2);
+  ctx.fillStyle = 'white';
+  ctx.fill();
+}
+
+function ligarEventosCrop(canvas) {
+  function ponto(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const src = e.touches ? e.touches[0] : e;
+    return { x: (src.clientX - rect.left) * scaleX, y: (src.clientY - rect.top) * scaleY };
+  }
+  function inicio(e) {
+    e.preventDefault();
+    const p = ponto(e);
+    const c = _cropState;
+    const distBorda = Math.sqrt((p.x - (c.cx + c.r)) ** 2 + (p.y - c.cy) ** 2);
+    const distCentro = Math.sqrt((p.x - c.cx) ** 2 + (p.y - c.cy) ** 2);
+    c.drag = true;
+    c.dragStartX = p.x; c.dragStartY = p.y;
+    c.dragStartCx = c.cx; c.dragStartCy = c.cy; c.dragStartR = c.r;
+    c.dragType = distBorda < 18 ? 'resize' : (distCentro < c.r ? 'move' : null);
+    if (!c.dragType) c.drag = false;
+  }
+  function mover(e) {
+    if (!_cropState || !_cropState.drag) return;
+    e.preventDefault();
+    const p = ponto(e);
+    const c = _cropState;
+    const dx = p.x - c.dragStartX, dy = p.y - c.dragStartY;
+    if (c.dragType === 'move') {
+      c.cx = Math.max(c.r, Math.min(c.W - c.r, c.dragStartCx + dx));
+      c.cy = Math.max(c.r, Math.min(c.H - c.r, c.dragStartCy + dy));
+    } else if (c.dragType === 'resize') {
+      const novoR = Math.max(30, Math.min(
+        Math.min(c.cx, c.W - c.cx, c.cy, c.H - c.cy),
+        c.dragStartR + dx
+      ));
+      c.r = novoR;
+    }
+    desenharCrop(canvas);
+  }
+  function fim() { if (_cropState) _cropState.drag = false; }
+
+  canvas.addEventListener('mousedown', inicio);
+  canvas.addEventListener('mousemove', mover);
+  canvas.addEventListener('mouseup', fim);
+  canvas.addEventListener('touchstart', inicio, { passive: false });
+  canvas.addEventListener('touchmove', mover, { passive: false });
+  canvas.addEventListener('touchend', fim);
+}
+
+function confirmarCropFoto() {
+  if (!_cropState) return;
+  const { img, cx, cy, r, escala } = _cropState;
+  // Exportar o crop em resolução original (não na escala de visualização)
+  const tamanho = 200; // px do avatar final
+  const offscreen = document.createElement('canvas');
+  offscreen.width = tamanho; offscreen.height = tamanho;
+  const ctx = offscreen.getContext('2d');
+  ctx.beginPath();
+  ctx.arc(tamanho / 2, tamanho / 2, tamanho / 2, 0, Math.PI * 2);
+  ctx.clip();
+  // Calcular coordenadas em pixels reais da imagem original
+  const srcX = (cx - r) / escala;
+  const srcY = (cy - r) / escala;
+  const srcS = (r * 2) / escala;
+  ctx.drawImage(img, srcX, srcY, srcS, srcS, 0, 0, tamanho, tamanho);
+  const fotoBase64 = offscreen.toDataURL('image/jpeg', 0.85);
+
+  const sw = getSwimmer(_cropState.swimmerId);
+  if (sw) {
+    sw.foto = fotoBase64;
+    saveDB();
+  }
+  _cropState = null;
+  document.getElementById('modalRoot').innerHTML = '';
+  render();
+}
+
+function cancelarCropFoto() {
+  _cropState = null;
+  document.getElementById('modalRoot').innerHTML = '';
+}
+
+// Gera o HTML do avatar — foto circular se existir, iniciais caso contrário.
+function avatarHtml(sw, tamanho, extra) {
+  tamanho = tamanho || 44;
+  extra = extra || '';
+  if (sw && sw.foto) {
+    return '<img src="' + sw.foto + '" style="width:' + tamanho + 'px;height:' + tamanho + 'px;border-radius:50%;object-fit:cover;flex-shrink:0;' + extra + '">';
+  }
+  return '<div class="swimmer-avatar" style="width:' + tamanho + 'px;height:' + tamanho + 'px;font-size:' + Math.round(tamanho * 0.36) + 'px;' + extra + '">' + iniciais(sw ? sw.nome : '?') + '</div>';
 }
 
 function toggleDadosTecnicos(analiseId, evt) {
@@ -3427,6 +3649,9 @@ function renderRelatorio() {
   if (idadeNaProva) infoLinha.push(fmtIdade(idadeNaProva));
 
   let html = '<div class="rep-header">' +
+    (sw.foto
+      ? '<img src="' + sw.foto + '" class="rep-athlete-photo">'
+      : '<div class="rep-athlete-initials">' + iniciais(sw.nome) + '</div>') +
     '<div class="rep-swimmer-name">' + escapeHtml(sw.nome) + '</div>' +
     '<div class="rep-prova-label">' + escapeHtml(provaLabel) + '</div>' +
     '<div class="rep-time">' + fmtTempo(metrics.tempoTotal) + '</div>' +
