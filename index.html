@@ -1847,10 +1847,17 @@ function render() {
     backBtn.onclick = function () { nav('perfil', { swimmerId: state.swimmerId }); };
     title.textContent = 'Relatório';
     const sw = getSwimmer(state.swimmerId);
+    if (!sw) { nav('lista'); return; }
     const an = sw.analises.find(function (a) { return a.id === state.verAnaliseId; });
-    sub.textContent = an ? (ESTILOS_LABEL(an.estilo) + ' ' + an.distancia + 'm · piscina ' + (an.tamanhoPiscina || 50) + 'm · ' + fmtData(an.dataProva || an.criadoEm)) : '';
-    app.innerHTML = renderRelatorio();
-    afterRenderRelatorio();
+    if (!an) { nav('perfil', { swimmerId: state.swimmerId }); return; }
+    sub.textContent = ESTILOS_LABEL(an.estilo) + ' ' + an.distancia + 'm · piscina ' + (an.tamanhoPiscina || 50) + 'm · ' + fmtData(an.dataProva || an.criadoEm);
+    try {
+      app.innerHTML = renderRelatorio();
+      afterRenderRelatorio();
+    } catch(e) {
+      app.innerHTML = '<div class="empty-state"><p>Erro ao gerar relatório: ' + escapeHtml(e.message) + '</p><button class="btn btn-ghost" onclick="nav(\'perfil\',{swimmerId:state.swimmerId})">Voltar ao perfil</button></div>';
+      console.error('renderRelatorio erro:', e);
+    }
   }
 }
 
@@ -2371,33 +2378,66 @@ function extrairWaveform() {
     });
 }
 
-// Detetar o sinal de partida: procura o pico mais abrupto após um período
-// de silêncio relativo. Estratégia:
-// 1. Ignorar o início (primeiros 2s — ambiente)
-// 2. Calcular o nível médio de silêncio dos primeiros 5s
-// 3. Encontrar o primeiro ponto onde a amplitude sobe >4× o silêncio médio
-//    e é um máximo local (o pico do apito/buzzer)
+// Detetar o sinal de partida: procura um pico breve e abrupto (apito/buzzer)
+// após um período de silêncio relativo, ignorando sons prolongados como vozes.
+// 
+// A diferença entre "aos seus lugares" (voz) e o apito:
+// - Voz: amplitude alta durante vários segundos, sobe gradualmente
+// - Apito/buzzer: spike muito curto (<500ms), sobe e desce abruptamente
+//
+// Estratégia:
+// 1. Calcular nível de "ruído de fundo" dos primeiros 3s
+// 2. Procurar janelas de 500ms onde a amplitude média é alta
+// 3. Preferir janelas onde a amplitude ANTES (300ms) é baixa — início abrupto
+// 4. Ignorar regiões prolongadas de alta amplitude (voz)
 function detetarSinalPartida(waveform, duracao) {
   const frameMs = 50;
-  const framesP2s = Math.round(2000 / frameMs);  // primeiros 2s (ignorar)
-  const framesP5s = Math.round(5000 / frameMs);  // primeiros 5s para calcular silêncio
   const n = waveform.length;
+  const framesP3s = Math.round(3000 / frameMs);
 
-  // Nível médio nos primeiros 5s (excluindo o início)
-  let somaAmbiente = 0, countAmbiente = 0;
-  for (let i = framesP2s; i < Math.min(framesP5s, n); i++) {
-    somaAmbiente += waveform[i]; countAmbiente++;
-  }
-  const nivelAmbiente = countAmbiente > 0 ? somaAmbiente / countAmbiente : 0.05;
-  const limiar = Math.max(nivelAmbiente * 4, 0.15); // pelo menos 4× o ambiente, mínimo 15%
+  // Nível de fundo (silêncio) nos primeiros 3s
+  let somaFundo = 0;
+  for (let i = 0; i < Math.min(framesP3s, n); i++) somaFundo += waveform[i];
+  const nivelFundo = somaFundo / Math.min(framesP3s, n);
 
-  // Procurar o primeiro pico que ultrapassa o limiar
-  for (let i = framesP2s + 1; i < n - 1; i++) {
-    if (waveform[i] >= limiar && waveform[i] >= waveform[i-1] && waveform[i] >= waveform[i+1]) {
-      return (i * frameMs) / 1000; // converter para segundos
+  // Limiar para considerar "som relevante": 3× o fundo, mínimo 10%
+  const limiar = Math.max(nivelFundo * 3, 0.10);
+
+  // Janelas de análise: 300ms antes (deve ser baixo) e 300ms depois (pode ser alto)
+  const framesAntes = Math.round(300 / frameMs); // ~6 frames
+  const framesDepois = Math.round(500 / frameMs); // ~10 frames
+
+  let melhorCandidato = null;
+  let melhorPontuacao = -1;
+
+  for (let i = framesP3s + framesAntes; i < n - framesDepois; i++) {
+    // Amplitude actual
+    const ampAtual = waveform[i];
+    if (ampAtual < limiar) continue;
+
+    // Média dos frames ANTES — deve ser baixa (silêncio antes do apito)
+    let somaAntes = 0;
+    for (let j = i - framesAntes; j < i; j++) somaAntes += waveform[j];
+    const mediaAntes = somaAntes / framesAntes;
+
+    // Média dos frames DEPOIS — deve cair rapidamente (apito é curto)
+    let somaDepois = 0;
+    for (let j = i + 1; j < i + framesDepois; j++) somaDepois += waveform[j];
+    const mediaDepois = somaDepois / framesDepois;
+
+    // Pontuação: favorece picos com silêncio antes (ratio alto/antes),
+    // e que não se prolonguem demasiado (penaliza alta amplitude depois)
+    const ratioSubida = mediaAntes > 0 ? ampAtual / mediaAntes : ampAtual / 0.01;
+    const brevidade = 1 / (1 + mediaDepois); // quanto mais curto, melhor
+    const pontuacao = ratioSubida * brevidade * ampAtual;
+
+    if (pontuacao > melhorPontuacao) {
+      melhorPontuacao = pontuacao;
+      melhorCandidato = i;
     }
   }
-  return null; // não encontrado
+
+  return melhorCandidato !== null ? (melhorCandidato * frameMs) / 1000 : null;
 }
 
 // Desenha o waveform num canvas, com:
@@ -2494,7 +2534,14 @@ function onWaveformClick(evt) {
   const janela = MEIO * 2;
   const inicio = Math.max(0, Math.min(duracao - janela, tAtual - MEIO));
   const t = inicio + fracao * janela;
-  if (vEl) { vEl.currentTime = Math.max(0, Math.min(vEl.duration, t)); }
+  const tFinal = Math.max(0, Math.min(vEl ? vEl.duration : duracao, t));
+  // Mover o vídeo para o ponto clicado
+  if (vEl) { vEl.currentTime = tFinal; }
+  // Mover a linha tracejada (sugestão) para este ponto — o utilizador
+  // indica visualmente onde está a partida, e a linha segue o clique.
+  state.video.waveformSugestao = tFinal;
+  // Actualizar o painel de sugestão com o novo tempo
+  renderWaveformArea();
 }
 
 function usarSugestaoPartida() {
@@ -2517,7 +2564,7 @@ function renderWaveformArea() {
   let html = '';
   if (state.video.waveformSugestao !== null) {
     html += '<div class="waveform-sugestao">' +
-      '<div class="ws-label">Sinal detetado automaticamente</div>' +
+      '<div class="ws-label">Sinal detetado — clica na onda para ajustar</div>' +
       '<div class="ws-time">' + fmtNum(state.video.waveformSugestao, 2, ' s') + '</div>' +
       '<button class="btn btn-ghost btn-sm" onclick="usarSugestaoPartida()">Ir para este ponto</button>' +
       '</div>';
@@ -3872,10 +3919,16 @@ function fmtEixoInt(v) {
 
 function renderRelatorio() {
   const sw = getSwimmer(state.swimmerId);
+  if (!sw) return '<div class="empty-state"><p>Nadador não encontrado.</p></div>';
   const an = sw.analises.find(function (a) { return a.id === state.verAnaliseId; });
   if (!an) return '<div class="empty-state"><p>Análise não encontrada.</p></div>';
 
-  const metrics = calcularMetricas(an.estilo, an.distancia, an.dadosBrutos, an.tamanhoPiscina);
+  let metrics;
+  try {
+    metrics = calcularMetricas(an.estilo, an.distancia, an.dadosBrutos || {}, an.tamanhoPiscina || 50);
+  } catch(e) {
+    return '<div class="empty-state"><p>Erro ao calcular métricas: ' + escapeHtml(String(e.message)) + '</p></div>';
+  }
   const melhor = getMelhorAnalise(sw, an.estilo, an.distancia, an.id, an.tamanhoPiscina);
   const éPB = melhor ? an.tempoTotal < melhor.tempoTotal : true;
   const temOutras = getAnalisesDaProva(sw, an.estilo, an.distancia, an.tamanhoPiscina).length > 1;
@@ -3909,16 +3962,25 @@ function renderRelatorio() {
 
   const metricsPB = (state.compararPB && melhor) ? calcularMetricas(melhor.estilo, melhor.distancia, melhor.dadosBrutos, melhor.tamanhoPiscina) : null;
 
-  html += '<div id="chartsContainer">' + renderGraficos(an, metrics, metricsPB) + '</div>';
+  try {
+    html += '<div id="chartsContainer">' + renderGraficos(an, metrics, metricsPB) + '</div>';
+  } catch(e) {
+    html += '<div id="chartsContainer"><div class="empty-state"><p>Erro nos gráficos: ' + escapeHtml(String(e.message)) + '</p></div></div>';
+    console.error('renderGraficos erro:', e);
+  }
 
   // Dados técnicos — só mostra se houver pelo menos um valor capturado automaticamente
-  const temDadosTecnicos = an.dadosBrutos && (
-    an.dadosBrutos.distancia_entrada_m || an.dadosBrutos.distancia_entrada_maos_m ||
-    an.dadosBrutos.distancia_breakout_m ||
-    Object.keys(an.dadosBrutos).some(function(k) { return k.startsWith('saida_dist_') || k.startsWith('tb_saida_'); })
-  );
-  if (temDadosTecnicos) {
-    html += renderDadosTecnicos(an, metrics, metricsPB, labelSerie1 || sw.nome, labelSerie2 || 'Melhor registo');
+  try {
+    const temDadosTecnicos = an.dadosBrutos && (
+      an.dadosBrutos.distancia_entrada_m || an.dadosBrutos.distancia_entrada_maos_m ||
+      an.dadosBrutos.distancia_breakout_m ||
+      Object.keys(an.dadosBrutos).some(function(k) { return k.startsWith('saida_dist_') || k.startsWith('tb_saida_'); })
+    );
+    if (temDadosTecnicos) {
+      html += renderDadosTecnicos(an, metrics, metricsPB, labelSerie1 || sw.nome, labelSerie2 || 'Melhor registo');
+    }
+  } catch(e) {
+    console.error('renderDadosTecnicos erro:', e);
   }
 
   html += '<button class="rep-btn rep-btn-ghost" onclick="editarAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Editar dados desta análise</button>';
