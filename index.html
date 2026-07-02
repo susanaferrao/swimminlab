@@ -115,9 +115,23 @@ html, body { transition: background-color .2s ease, color .2s ease; }
   flex-shrink: 0; width: 130px; display: flex; align-items: flex-end; justify-content: center;
   margin: -20px -16px -20px 0; overflow: hidden;
 }
-.rep-header-photo img {
-  width: 130px; height: 160px; object-fit: cover; object-position: top center;
+.rep-header-photo-img {
+  width: 130px; height: 160px;
+  object-fit: cover; object-position: top center;
   border-radius: 0 16px 16px 0;
+  display: block;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+@media print {
+  .rep-header-photo-img {
+    /* Na impressão usar aspect-ratio em vez de altura fixa
+       para que o browser calcule a altura correctamente */
+    width: 130px !important;
+    height: auto !important;
+    max-height: 180px;
+    object-fit: contain;
+    object-position: top center;
+  }
 }
 .rep-header-photo-initials {
   width: 100px; height: 100px; border-radius: 50%;
@@ -2342,14 +2356,16 @@ function confirmarCropFoto() {
   const srcY = Math.max(0, (cy - r) / escala);
   const srcW = Math.min(img.width - srcX, (r * 2) / escala);
   const srcH = Math.min(img.height - srcY, (r * 2) / escala);
-  const lado = Math.round(Math.max(srcW, srcH));
 
+  // Guardar exactamente em proporção 4:5 (igual ao espaço no cabeçalho: 130×160)
+  // — assim o browser não precisa de redimensionar na impressão e não distorce.
+  const DEST_W = 520; // 4× a largura visual (130px) para boa qualidade
+  const DEST_H = 640; // 4× a altura visual (160px)
   const offscreen = document.createElement('canvas');
-  offscreen.width = lado;
-  offscreen.height = lado;
+  offscreen.width = DEST_W;
+  offscreen.height = DEST_H;
   const ctx = offscreen.getContext('2d');
-  // PNG preserva transparência — sem fundo preto
-  ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, lado, lado);
+  ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, DEST_W, DEST_H);
   const fotoBase64 = offscreen.toDataURL('image/png');
 
   const db = loadDB();
@@ -4013,7 +4029,7 @@ function renderRelatorio() {
   // Foto à direita — grande e sem círculo, como no mockup
   html += '<div class="rep-header-photo">';
   if (sw.foto) {
-    html += '<img src="' + sw.foto + '">';
+    html += '<img src="' + sw.foto + '" class="rep-header-photo-img">';
   } else {
     html += '<div class="rep-header-photo-initials">' + iniciais(sw.nome) + '</div>';
   }
