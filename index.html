@@ -558,6 +558,13 @@ html:not(.light-mode) input[type="date"] { color-scheme: dark; }
   border-radius: var(--radius-sm); padding: 8px 10px; font-size: 12px; font-weight: 600; white-space: nowrap;
 }
 .video-step-label { font-size: 13px; color: var(--accent3); font-weight: 600; margin-bottom: 8px; }
+.waveform-wrap { position: relative; margin: 10px 0; background: var(--bg3); border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); }
+.waveform-canvas { display: block; width: 100%; height: 80px; cursor: crosshair; touch-action: none; }
+.waveform-label { position: absolute; top: 4px; left: 8px; font-size: 10px; color: var(--txt3); font-weight: 600; pointer-events: none; }
+.waveform-sugestao { background: rgba(0,180,216,0.12); border: 1px solid var(--accent); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+.waveform-sugestao .ws-label { font-size: 13px; color: var(--txt2); flex: 1; }
+.waveform-sugestao .ws-time { font-size: 14px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.waveform-analyzing { text-align: center; font-size: 12px; color: var(--txt3); padding: 16px; }
 
 /* ───── CALIBRAÇÃO DE DISTÂNCIA (overlay sobre o vídeo) ───── */
 .calib-overlay { position: fixed; inset: 0; background: rgba(2,8,16,0.92); z-index: 300; display: flex; flex-direction: column; }
@@ -634,10 +641,9 @@ const ORDEM_MEDLEY = ['MARIPOSA', 'COSTAS', 'BRUCOS', 'LIVRES'];
 
 const CAMPOS_PARTIDA = {
   BLOCO: [
-    { id: 'partida_s', label: 'Tempo de reação', unidade: 's', subgrupo: 'Reação e take off' },
     { id: 'takeoff_maos_s', label: 'Take off mãos', unidade: 's', subgrupo: 'Reação e take off' },
     { id: 'takeoff_pe_posterior_s', label: 'Take off pé posterior', unidade: 's', subgrupo: 'Reação e take off' },
-    { id: 'takeoff_pe_anterior_s', label: 'Take off pé anterior', unidade: 's', subgrupo: 'Reação e take off' },
+    { id: 'takeoff_pe_anterior_s', label: 'Tempo de reação', unidade: 's', subgrupo: 'Reação e take off' },
     { id: 'tempo_entrada_maos_s', label: 'Entrada das mãos na água', unidade: 's', subgrupo: 'Voo e entrada na água' },
     { id: 'distancia_entrada_m', label: 'Distância de entrada', unidade: 'm', subgrupo: 'Voo e entrada na água', autoCapturado: true },
     { id: 'tempo_breakout_s', label: 'Tempo breakout', unidade: 's', subgrupo: 'Breakout' },
@@ -645,9 +651,8 @@ const CAMPOS_PARTIDA = {
     { id: 'aos_15m_s', label: 'Tempo aos 15m', unidade: 's', subgrupo: 'Breakout' },
   ],
   COSTAS: [
-    { id: 'partida_s', label: 'Tempo de reação', unidade: 's', subgrupo: 'Reação e take off' },
     { id: 'takeoff_maos_s', label: 'Take off mãos', unidade: 's', subgrupo: 'Reação e take off' },
-    { id: 'takeoff_pes_s', label: 'Take off pés', unidade: 's', subgrupo: 'Reação e take off' },
+    { id: 'takeoff_pes_s', label: 'Tempo de reação', unidade: 's', subgrupo: 'Reação e take off' },
     { id: 'distancia_entrada_maos_m', label: 'Distância de entrada (mãos)', unidade: 'm', subgrupo: 'Voo e entrada na água', autoCapturado: true },
     { id: 'tempo_breakout_s', label: 'Tempo breakout', unidade: 's', subgrupo: 'Breakout' },
     { id: 'distancia_breakout_m', label: 'Distância breakout', unidade: 'm', subgrupo: 'Breakout', autoCapturado: true },
@@ -1755,6 +1760,9 @@ const state = {
     modo: 'tempos',             // 'tempos' (marcação por frame) | 'ciclos' (contagens manuais, vídeo continua visível)
     zoom: 1, panX: 0, panY: 0,  // estado de ampliação/deslocação do vídeo principal
     estabilizando: false,       // true enquanto o vídeo ainda está a processar um seek (currentTime não fiável)
+    waveform: null,             // Float32Array com amplitudes normalizadas (0-1) por frame de 50ms
+    waveformDuracao: null,      // duração total do áudio em segundos
+    waveformSugestao: null,     // tempo sugerido automaticamente para a partida (segundos)
   },
   calibDistancia: {
     ativo: false,           // true quando o overlay de calibração de distância está aberto
@@ -1973,7 +1981,7 @@ function gerarAnaliseExemplo() {
   const sw = createSwimmer('Exemplo (podes apagar)', 'F', '2010-05-12');
   const dadosBrutos = {
     // Partida (cronómetro absoluto desde o sinal)
-    partida_s: '0.68', takeoff_maos_s: '0.74', takeoff_pe_posterior_s: '0.79', takeoff_pe_anterior_s: '0.85',
+    takeoff_maos_s: '0.68', takeoff_pe_posterior_s: '0.74', takeoff_pe_anterior_s: '0.79',
     tempo_entrada_maos_s: '1.22', distancia_entrada_m: '4.3', tempo_breakout_s: '5.6', distancia_breakout_m: '8.5',
     aos_15m_s: '7.9',
     // 1ª piscina (15-25 e 25-45)
@@ -2304,6 +2312,232 @@ function avatarHtml(sw, tamanho, extra) {
     return '<img src="' + sw.foto + '" style="width:' + tamanho + 'px;height:' + tamanho + 'px;border-radius:50%;object-fit:cover;flex-shrink:0;' + extra + '">';
   }
   return '<div class="swimmer-avatar" style="width:' + tamanho + 'px;height:' + tamanho + 'px;font-size:' + Math.round(tamanho * 0.36) + 'px;' + extra + '">' + iniciais(sw ? sw.nome : '?') + '</div>';
+}
+
+// ---- WAVEFORM E DETEÇÃO DE SINAL DE PARTIDA ----
+
+// Extrai o áudio do vídeo e gera um waveform normalizado.
+// Usa Web Audio API — funciona com o objectUrl do vídeo já carregado.
+function extrairWaveform() {
+  if (!state.video.objectUrl || state.video.waveform) return;
+  const v = getVideoEl();
+  if (!v) return;
+  document.getElementById('waveformArea').innerHTML = '<div class="waveform-analyzing">A analisar o áudio...</div>';
+
+  fetch(state.video.objectUrl)
+    .then(function(r) { return r.arrayBuffer(); })
+    .then(function(buf) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      return ctx.decodeAudioData(buf);
+    })
+    .then(function(audioBuf) {
+      // Misturar todos os canais num mono
+      const duracao = audioBuf.duration;
+      const sr = audioBuf.sampleRate;
+      const frameMs = 50; // um ponto por cada 50ms
+      const frameSize = Math.round(sr * frameMs / 1000);
+      const nFrames = Math.floor(audioBuf.length / frameSize);
+      const waveform = new Float32Array(nFrames);
+      const nCh = audioBuf.numberOfChannels;
+
+      // Calcular RMS por frame (root mean square = energia do som)
+      for (let f = 0; f < nFrames; f++) {
+        let rms = 0;
+        for (let ch = 0; ch < nCh; ch++) {
+          const data = audioBuf.getChannelData(ch);
+          for (let i = 0; i < frameSize; i++) {
+            const s = data[f * frameSize + i];
+            rms += s * s;
+          }
+        }
+        waveform[f] = Math.sqrt(rms / (frameSize * nCh));
+      }
+
+      // Normalizar para 0-1
+      const maxVal = Math.max.apply(null, Array.from(waveform));
+      if (maxVal > 0) { for (let i = 0; i < nFrames; i++) waveform[i] /= maxVal; }
+
+      state.video.waveform = waveform;
+      state.video.waveformDuracao = duracao;
+
+      // Detetar automaticamente o sinal de partida
+      state.video.waveformSugestao = detetarSinalPartida(waveform, duracao);
+
+      renderVideoMarkSection();
+    })
+    .catch(function(err) {
+      console.warn('Waveform: não foi possível analisar o áudio', err);
+      document.getElementById('waveformArea').innerHTML = '<div class="waveform-analyzing">Não foi possível analisar o áudio deste vídeo.</div>';
+    });
+}
+
+// Detetar o sinal de partida: procura o pico mais abrupto após um período
+// de silêncio relativo. Estratégia:
+// 1. Ignorar o início (primeiros 2s — ambiente)
+// 2. Calcular o nível médio de silêncio dos primeiros 5s
+// 3. Encontrar o primeiro ponto onde a amplitude sobe >4× o silêncio médio
+//    e é um máximo local (o pico do apito/buzzer)
+function detetarSinalPartida(waveform, duracao) {
+  const frameMs = 50;
+  const framesP2s = Math.round(2000 / frameMs);  // primeiros 2s (ignorar)
+  const framesP5s = Math.round(5000 / frameMs);  // primeiros 5s para calcular silêncio
+  const n = waveform.length;
+
+  // Nível médio nos primeiros 5s (excluindo o início)
+  let somaAmbiente = 0, countAmbiente = 0;
+  for (let i = framesP2s; i < Math.min(framesP5s, n); i++) {
+    somaAmbiente += waveform[i]; countAmbiente++;
+  }
+  const nivelAmbiente = countAmbiente > 0 ? somaAmbiente / countAmbiente : 0.05;
+  const limiar = Math.max(nivelAmbiente * 4, 0.15); // pelo menos 4× o ambiente, mínimo 15%
+
+  // Procurar o primeiro pico que ultrapassa o limiar
+  for (let i = framesP2s + 1; i < n - 1; i++) {
+    if (waveform[i] >= limiar && waveform[i] >= waveform[i-1] && waveform[i] >= waveform[i+1]) {
+      return (i * frameMs) / 1000; // converter para segundos
+    }
+  }
+  return null; // não encontrado
+}
+
+// Desenha o waveform num canvas, com:
+// - linha do cursor (posição atual do vídeo)
+// - marca da sugestão automática (a amarelo)
+// - marca da partida confirmada (a verde)
+function desenharWaveform(canvas) {
+  if (!canvas || !state.video.waveform) return;
+  const wf = state.video.waveform;
+  const duracao = state.video.waveformDuracao;
+  const W = canvas.width = canvas.offsetWidth || 320;
+  const H = canvas.height = 80;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  // Fundo
+  ctx.fillStyle = 'transparent';
+  ctx.fillRect(0, 0, W, H);
+
+  // Janela temporal: ±10s em torno da posição atual do vídeo
+  const v = getVideoEl();
+  const tAtual = v ? v.currentTime : 0;
+  const MEIO = 10; // segundos de cada lado
+  const janela = MEIO * 2;
+  const inicio = Math.max(0, Math.min(duracao - janela, tAtual - MEIO));
+  const fim = inicio + janela;
+
+  function tempoParaX(t) { return ((t - inicio) / janela) * W; }
+
+  // Desenhar waveform
+  const frameMs = 50;
+  ctx.beginPath();
+  const meiH = H / 2;
+  for (let x = 0; x < W; x++) {
+    const t = inicio + (x / W) * janela;
+    const frameIdx = Math.round(t * 1000 / frameMs);
+    const amp = (frameIdx >= 0 && frameIdx < wf.length) ? wf[frameIdx] : 0;
+    const h = amp * meiH * 0.9;
+    if (x === 0) ctx.moveTo(x, meiH - h);
+    else ctx.lineTo(x, meiH - h);
+  }
+  // Espelhar para baixo
+  for (let x = W - 1; x >= 0; x--) {
+    const t = inicio + (x / W) * janela;
+    const frameIdx = Math.round(t * 1000 / frameMs);
+    const amp = (frameIdx >= 0 && frameIdx < wf.length) ? wf[frameIdx] : 0;
+    const h = amp * meiH * 0.9;
+    ctx.lineTo(x, meiH + h);
+  }
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(0,150,199,0.4)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,150,199,0.8)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Linha de sugestão (amarelo)
+  if (state.video.waveformSugestao !== null) {
+    const x = tempoParaX(state.video.waveformSugestao);
+    ctx.strokeStyle = '#f4762a';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // A posição actual está sempre ao centro (a janela move-se com o vídeo),
+  // por isso a linha branca é sempre vertical ao meio do canvas.
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
+
+  // Labels de tempo
+  ctx.font = '9px system-ui';
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.textAlign = 'left';
+  ctx.fillText(fmtNum(inicio, 1, 's'), 4, H - 4);
+  ctx.textAlign = 'right';
+  ctx.fillText(fmtNum(fim, 1, 's'), W - 4, H - 4);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.fillText(fmtNum(tAtual, 2, 's'), W / 2, H - 4);
+}
+
+function onWaveformClick(evt) {
+  const canvas = evt.currentTarget;
+  const rect = canvas.getBoundingClientRect();
+  const x = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
+  const fracao = x / rect.width;
+  const duracao = state.video.waveformDuracao;
+  const vEl = getVideoEl();
+  const tAtual = vEl ? vEl.currentTime : 0;
+  const MEIO = 10;
+  const janela = MEIO * 2;
+  const inicio = Math.max(0, Math.min(duracao - janela, tAtual - MEIO));
+  const t = inicio + fracao * janela;
+  if (vEl) { vEl.currentTime = Math.max(0, Math.min(vEl.duration, t)); }
+}
+
+function usarSugestaoPartida() {
+  const t = state.video.waveformSugestao;
+  if (t === null) return;
+  const v = getVideoEl();
+  if (v) {
+    v.currentTime = t;
+    v.pause();
+  }
+}
+
+function renderWaveformArea() {
+  const area = document.getElementById('waveformArea');
+  if (!area) return;
+  if (!state.video.waveform) {
+    area.innerHTML = '<button class="btn btn-ghost" style="font-size:12px;margin-bottom:6px" onclick="extrairWaveform()">Analisar áudio para identificar o sinal de partida</button>';
+    return;
+  }
+  let html = '';
+  if (state.video.waveformSugestao !== null) {
+    html += '<div class="waveform-sugestao">' +
+      '<div class="ws-label">Sinal detetado automaticamente</div>' +
+      '<div class="ws-time">' + fmtNum(state.video.waveformSugestao, 2, ' s') + '</div>' +
+      '<button class="btn btn-ghost btn-sm" onclick="usarSugestaoPartida()">Ir para este ponto</button>' +
+      '</div>';
+  }
+  html += '<div class="waveform-wrap"><div class="waveform-label">Forma de onda · janela ±10s · clica para saltar</div>' +
+    '<canvas class="waveform-canvas" id="waveformCanvas"></canvas></div>';
+  area.innerHTML = html;
+  // Ligar canvas
+  setTimeout(function () {
+    const c = document.getElementById('waveformCanvas');
+    if (!c) return;
+    desenharWaveform(c);
+    c.addEventListener('click', onWaveformClick);
+    c.addEventListener('touchend', onWaveformClick);
+    // Actualizar cursor enquanto o vídeo avança
+    const v = getVideoEl();
+    if (v) {
+      v.addEventListener('timeupdate', function () { desenharWaveform(c); });
+    }
+  }, 50);
 }
 
 function toggleDadosTecnicos(analiseId, evt) {
@@ -2766,7 +3000,7 @@ function finalizarGuardarAnalise(estilo, distancia, metrics) {
   }
   state.editandoAnaliseId = null;
   state.formDataProva = null;
-  nav('relatorio', { verAnaliseId: analise.id, compararPB: false });
+  nav('relatorio', { swimmerId: state.swimmerId, verAnaliseId: analise.id, compararPB: false });
 }
 
 /* ---------- ECRÃ: marcar tempos a partir de vídeo ---------- */
@@ -2849,7 +3083,8 @@ function renderMarcarVideo() {
 function renderVideoMarkSection() {
   let html = '';
   if (state.video.tempoPartidaAbsoluto === null) {
-    html += '<div class="video-step-label">Avança até ao frame exato da partida (saída do nadador)</div>';
+    html += '<div class="video-step-label">Avança até ao frame exato do sinal de partida</div>';
+    html += '<div id="waveformArea"></div>';
     html += '<button class="btn btn-primary" onclick="marcarPartidaVideo()">Marcar este frame como a Partida (t = 0)</button>';
   } else if (state.video.modo === 'ciclos') {
     html += renderVideoModoCiclos();
@@ -2894,6 +3129,11 @@ function renderVideoMarkSection() {
   if (listaNova) listaNova.scrollTop = scrollListaAntes;
   window.scrollTo(0, scrollDocAntes);
   atualizarEstadoBotoesMarcar();
+
+  // Mostrar waveform se estivermos no passo de marcação de partida
+  if (state.video.tempoPartidaAbsoluto === null) {
+    renderWaveformArea();
+  }
 }
 
 function getVideoEl() { return document.getElementById('videoPlayer'); }
