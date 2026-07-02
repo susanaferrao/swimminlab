@@ -262,9 +262,12 @@ input, select { font-family: inherit; }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 13px; color: var(--txt2); margin-bottom: 6px; }
 .field input, .field select {
-  width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--txt);
+  width: 100%; max-width: 100%; box-sizing: border-box;
+  background: var(--bg3); border: 1px solid var(--border); color: var(--txt);
   border-radius: var(--radius-sm); padding: 11px 12px; font-size: 15px;
+  -webkit-appearance: none; appearance: none;
 }
+.field input[type="date"] { -webkit-appearance: none; appearance: none; min-width: 0; }
 .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
 .field-row { display: flex; gap: 10px; }
 .field-row .field { flex: 1; }
@@ -368,6 +371,11 @@ input, select { font-family: inherit; }
 .history-item .hi-date { font-size: 12px; color: var(--txt3); }
 .history-item .hi-time { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .history-item .hi-pb-tag { font-size: 10px; color: var(--gold); font-weight: 700; text-transform: uppercase; }
+.hi-tec-btn { font-size: 11px; color: var(--txt3); background: none; border: none; padding: 4px 0 8px; text-decoration: underline; }
+.hi-tecnico { background: var(--bg3); border-radius: var(--radius-sm); padding: 8px 12px; margin: 2px 0 6px; }
+.hi-tec-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: var(--txt2); border-bottom: 1px solid var(--border); }
+.hi-tec-row:last-child { border-bottom: none; }
+.hi-tec-row span:last-child { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--txt); }
 .hi-delete-btn {
   background: transparent; border: none; color: var(--txt3); flex-shrink: 0;
   width: 36px; padding: 0; display: flex; align-items: center; justify-content: center;
@@ -420,8 +428,10 @@ input, select { font-family: inherit; }
 .modal-box .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
 .modal-box .modal-msg { font-size: 14px; color: var(--txt2); line-height: 1.5; margin-bottom: 14px; }
 .modal-box input {
-  width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--txt);
+  width: 100%; max-width: 100%; box-sizing: border-box;
+  background: var(--bg3); border: 1px solid var(--border); color: var(--txt);
   border-radius: var(--radius-sm); padding: 11px 12px; font-size: 15px; margin-bottom: 16px;
+  -webkit-appearance: none; appearance: none; min-width: 0;
 }
 .modal-box input:focus { outline: none; border-color: var(--accent); }
 .modal-box .field-label { display: block; font-size: 12px; color: var(--txt2); margin-bottom: 6px; margin-top: 2px; }
@@ -591,18 +601,18 @@ const CAMPOS_PARTIDA = {
     { id: 'takeoff_pe_posterior_s', label: 'Take off pé posterior', unidade: 's', subgrupo: 'Reação e take off' },
     { id: 'takeoff_pe_anterior_s', label: 'Take off pé anterior', unidade: 's', subgrupo: 'Reação e take off' },
     { id: 'tempo_entrada_maos_s', label: 'Entrada das mãos na água', unidade: 's', subgrupo: 'Voo e entrada na água' },
-    { id: 'distancia_entrada_m', label: 'Distância de entrada', unidade: 'm', subgrupo: 'Voo e entrada na água' },
+    { id: 'distancia_entrada_m', label: 'Distância de entrada', unidade: 'm', subgrupo: 'Voo e entrada na água', autoCapturado: true },
     { id: 'tempo_breakout_s', label: 'Tempo breakout', unidade: 's', subgrupo: 'Breakout' },
-    { id: 'distancia_breakout_m', label: 'Distância breakout', unidade: 'm', subgrupo: 'Breakout' },
+    { id: 'distancia_breakout_m', label: 'Distância breakout', unidade: 'm', subgrupo: 'Breakout', autoCapturado: true },
     { id: 'aos_15m_s', label: 'Tempo aos 15m', unidade: 's', subgrupo: 'Breakout' },
   ],
   COSTAS: [
     { id: 'partida_s', label: 'Tempo de reação', unidade: 's', subgrupo: 'Reação e take off' },
     { id: 'takeoff_maos_s', label: 'Take off mãos', unidade: 's', subgrupo: 'Reação e take off' },
     { id: 'takeoff_pes_s', label: 'Take off pés', unidade: 's', subgrupo: 'Reação e take off' },
-    { id: 'distancia_entrada_maos_m', label: 'Distância de entrada (mãos)', unidade: 'm', subgrupo: 'Voo e entrada na água' },
+    { id: 'distancia_entrada_maos_m', label: 'Distância de entrada (mãos)', unidade: 'm', subgrupo: 'Voo e entrada na água', autoCapturado: true },
     { id: 'tempo_breakout_s', label: 'Tempo breakout', unidade: 's', subgrupo: 'Breakout' },
-    { id: 'distancia_breakout_m', label: 'Distância breakout', unidade: 'm', subgrupo: 'Breakout' },
+    { id: 'distancia_breakout_m', label: 'Distância breakout', unidade: 'm', subgrupo: 'Breakout', autoCapturado: true },
     { id: 'aos_15m_s', label: 'Tempo aos 15m', unidade: 's', subgrupo: 'Breakout' },
   ],
 };
@@ -958,7 +968,7 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
     // ---- TEMPOS, ordenados pela posição real no vídeo ----
     tempos.push({ group: 'Partida', id: 'fase_partida', isHeader: true });
     camposPartida.forEach(function (c) {
-      tempos.push({ id: c.id, label: c.label, unidade: c.unidade, group: 'Partida', subgrupo: c.subgrupo });
+      tempos.push({ id: c.id, label: c.label, unidade: c.unidade, group: 'Partida', subgrupo: c.subgrupo, autoCapturado: c.autoCapturado || false });
     });
 
     if (distancia === 50) {
@@ -1003,7 +1013,7 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
         tempos.push({ id: 'tv_aprox_' + e.v.emMetros, label: 'Tempo no toque na parede (' + e.v.emMetros + 'm)', sub: percursoLocal(e.v.emMetros, tamanhoPiscina), unidade: 's', group: 'Percurso da prova', subgrupo: sub });
       } else if (e.tipo === 'viragem_saida') {
         const sub = 'Viragem aos ' + e.v.emMetros + 'm';
-        tempos.push({ id: 'saida_dist_' + e.v.emMetros, label: 'Distância de breakout pós-viragem (' + e.v.emMetros + 'm)', sub: percursoLocalSaida(e.v.emMetros, tamanhoPiscina), unidade: 'm', group: 'Percurso da prova', subgrupo: sub });
+        tempos.push({ id: 'saida_dist_' + e.v.emMetros, label: 'Distância de breakout pós-viragem (' + e.v.emMetros + 'm)', sub: percursoLocalSaida(e.v.emMetros, tamanhoPiscina), unidade: 'm', group: 'Percurso da prova', subgrupo: sub, autoCapturado: true });
         tempos.push({ id: 'tv_saida_' + e.v.emMetros, label: 'Tempo aos ' + (e.v.emMetros+15) + 'm', sub: percursoLocal(e.v.emMetros+15, tamanhoPiscina), unidade: 's', group: 'Percurso da prova', subgrupo: sub });
       }
     });
@@ -1069,7 +1079,7 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
     tempos.push({ group: 'Partida', id: 'fase_partida', isHeader: true });
     const camposPartida = familiaPartida('MARIPOSA');
     camposPartida.forEach(function (c) {
-      tempos.push({ id: c.id, label: c.label, unidade: c.unidade, group: 'Partida', subgrupo: c.subgrupo });
+      tempos.push({ id: c.id, label: c.label, unidade: c.unidade, group: 'Partida', subgrupo: c.subgrupo, autoCapturado: c.autoCapturado || false });
     });
 
     const todosTroçosLimpos = prova.troços.reduce(function (acc, tr) {
@@ -1106,7 +1116,7 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
       } else if (e.tipo === 'viragem_saida') {
         const tagTransição = e.v.éTransição ? (' · transição ' + ESTILOS[e.v.estiloEntrada].nome + '→' + ESTILOS[e.v.estiloSaida].nome) : (' · ' + ESTILOS[e.v.estiloEntrada].nome);
         const sub = 'Viragem aos ' + e.v.emMetros + 'm';
-        tempos.push({ id: 'saida_dist_' + e.v.emMetros, label: 'Distância de breakout pós-viragem (' + e.v.emMetros + 'm)', sub: percursoLocalSaida(e.v.emMetros, tamanhoPiscina), unidade: 'm', group: 'Percurso da prova', subgrupo: sub });
+        tempos.push({ id: 'saida_dist_' + e.v.emMetros, label: 'Distância de breakout pós-viragem (' + e.v.emMetros + 'm)', sub: percursoLocalSaida(e.v.emMetros, tamanhoPiscina), unidade: 'm', group: 'Percurso da prova', subgrupo: sub, autoCapturado: true });
         tempos.push({ id: 'tv_saida_' + e.v.emMetros, label: 'Tempo aos ' + (e.v.emMetros+15) + 'm' + tagTransição, sub: percursoLocal(e.v.emMetros+15, tamanhoPiscina), unidade: 's', group: 'Percurso da prova', subgrupo: sub });
       }
     });
@@ -1263,22 +1273,20 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
   prova.viragens.forEach(function (v) {
     const tAprox = n('tv_aprox_' + v.emMetros);
     const tSaida = n('tv_saida_' + v.emMetros);
-    // tAprox e tSaida são tempos absolutos: à entrada (x-5) e à saída (x+15).
-    // tempo de aproximação = tAprox - (tempo absoluto no início desse troço, ou seja, fim do troço anterior)
-    // tempo de saída = tSaida - tAprox  (intervalo entre os -5 e os +15, que inclui o toque na parede)
+    const tBreakout = n('tb_saida_' + v.emMetros); // tempo real do breakout pós-viragem
     const dAprox = (tAprox !== null) ? tAprox - tempoAbsolutoEntradaAproximacao(v, prova, dados) : null;
     const dSaida = (tAprox !== null && tSaida !== null) ? (tSaida - tAprox) : null;
     const tTotal = (dAprox !== null && dSaida !== null) ? (dAprox + dSaida) : null;
     const distSaida = n('saida_dist_' + v.emMetros);
-    // Percurso subaquático pós-viragem: da parede até ao breakout.
-    // Distância = distSaida; Tempo = tSaida - tAprox (o intervalo já calculado em dSaida)
-    // mas dSaida inclui o toque na parede e os 15m de saída — o subaquático é
-    // apenas até ao breakout. Usando os tempos absolutos: tAbsSaida (breakout) - tAprox (toque).
-    const velSubaqViragem = (distSaida !== null && dSaida !== null && dSaida > 0)
-      ? +(distSaida / dSaida).toFixed(2) : null;
+    // Tempo subaquático = toque na parede → breakout real (tb_saida).
+    // Diferente de dSaida que vai até aos +15m.
+    const tempoSubaqReal = (tAprox !== null && tBreakout !== null) ? +(tBreakout - tAprox).toFixed(2) : null;
+    const velSubaqViragem = (distSaida !== null && tempoSubaqReal !== null && tempoSubaqReal > 0)
+      ? +(distSaida / tempoSubaqReal).toFixed(2) : null;
     out.porViragem.push({
       emMetros: v.emMetros, tAproximacao: dAprox, tSaida: dSaida, tTotal: tTotal,
       tAbsAprox: tAprox, tAbsSaida: tSaida, distSaida: distSaida,
+      tempoSubaquatico: tempoSubaqReal,
       velSubaquatico: velSubaqViragem,
       éTransição: v.éTransição || false,
       estiloEntrada: v.estiloEntrada || estilo, estiloSaida: v.estiloSaida || estilo,
@@ -1640,7 +1648,11 @@ function showModalNadador(titulo, swimmerExistente, onConfirm) {
         '<label class="field-label">Sexo</label>' +
         '<div id="sexoBtnsContainer">' + sexoBtnsHtml() + '</div>' +
         '<label class="field-label">Data de nascimento</label>' +
-        '<input type="date" id="modalDataInput" value="' + dataAtual + '">' +
+        '<div style="display:flex;gap:8px">' +
+          '<input type="number" id="modalDiaInput" placeholder="Dia" min="1" max="31" inputmode="numeric" style="width:33%;box-sizing:border-box" value="' + (dataAtual ? parseInt(dataAtual.split('-')[2]) : '') + '">' +
+          '<input type="number" id="modalMesInput" placeholder="Mês" min="1" max="12" inputmode="numeric" style="width:33%;box-sizing:border-box" value="' + (dataAtual ? parseInt(dataAtual.split('-')[1]) : '') + '">' +
+          '<input type="number" id="modalAnoInput" placeholder="Ano" min="1900" max="2099" inputmode="numeric" style="width:34%;box-sizing:border-box" value="' + (dataAtual ? dataAtual.split('-')[0] : '') + '">' +
+        '</div>' +
         '<div class="btn-row">' +
           '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
           '<button class="btn btn-primary" id="modalConfirmBtn">Guardar</button>' +
@@ -1651,7 +1663,15 @@ function showModalNadador(titulo, swimmerExistente, onConfirm) {
   document.getElementById('modalConfirmBtn').onclick = function () {
     const nome = document.getElementById('modalNomeInput').value.trim();
     if (!nome) { document.getElementById('modalNomeInput').focus(); return; }
-    const data = document.getElementById('modalDataInput').value || null;
+    const dia = document.getElementById('modalDiaInput').value.trim();
+    const mes = document.getElementById('modalMesInput').value.trim();
+    const ano = document.getElementById('modalAnoInput').value.trim();
+    let data = null;
+    if (dia && mes && ano) {
+      data = ano.padStart(4,'0') + '-' + mes.padStart(2,'0') + '-' + dia.padStart(2,'0');
+    } else if (mes && ano) {
+      data = ano.padStart(4,'0') + '-' + mes.padStart(2,'0') + '-01';
+    }
     const sexo = modalSexoSelecionado;
     closeModal();
     onConfirm({ nome: nome, sexo: sexo, dataNascimento: data });
@@ -2025,8 +2045,35 @@ function renderPerfil() {
         '<div class="history-item' + (isPB ? ' is-pb' : '') + '" onclick="nav(\'relatorio\',{swimmerId:\'' + sw.id + '\',verAnaliseId:\'' + a.id + '\',compararPB:false})">' +
         '<div><div class="hi-date">' + fmtData(a.dataProva || a.criadoEm) + (a.localProva ? ' · ' + escapeHtml(a.localProva) : '') + (isPB ? '<span class="hi-pb-tag"> · melhor registo</span>' : '') + '</div>' +
         '<div class="hi-time">' + fmtTempo(a.tempoTotal) + '</div></div>' +
-        '<div class="chevron">›</div></div>' +
-        '<button class="hi-delete-btn" onclick="apagarAnaliseDoHistorico(\'' + sw.id + '\',\'' + a.id + '\')" aria-label="Apagar análise">' +
+        '<div class="chevron">›</div></div>';
+
+      // Mostrar dados técnicos (capturados automaticamente pelo vídeo) se existirem
+      const db = a.dadosBrutos || {};
+      const temDadosTecnicos = db.distancia_entrada_m || db.distancia_entrada_maos_m ||
+        db.distancia_breakout_m ||
+        Object.keys(db).some(function(k) { return k.startsWith('saida_dist_') || k.startsWith('tb_saida_'); });
+      if (temDadosTecnicos) {
+        html += '<div class="hi-tecnico" id="tec_' + a.id + '" style="display:none">';
+        if (db.distancia_entrada_m || db.distancia_entrada_maos_m) {
+          const d = db.distancia_entrada_m || db.distancia_entrada_maos_m;
+          html += '<div class="hi-tec-row"><span>Distância de entrada</span><span>' + fmtNum(parseFloat(d), 2, ' m') + '</span></div>';
+        }
+        if (db.distancia_breakout_m) {
+          html += '<div class="hi-tec-row"><span>Distância de breakout (partida)</span><span>' + fmtNum(parseFloat(db.distancia_breakout_m), 2, ' m') + '</span></div>';
+        }
+        Object.keys(db).filter(function(k) { return k.startsWith('saida_dist_'); }).forEach(function(k) {
+          const metros = k.replace('saida_dist_', '');
+          html += '<div class="hi-tec-row"><span>Breakout viragem ' + metros + 'm — dist.</span><span>' + fmtNum(parseFloat(db[k]), 2, ' m') + '</span></div>';
+          const tbKey = 'tb_saida_' + metros;
+          if (db[tbKey]) {
+            html += '<div class="hi-tec-row"><span>Breakout viragem ' + metros + 'm — tempo</span><span>' + fmtNum(parseFloat(db[tbKey]), 2, ' s') + '</span></div>';
+          }
+        });
+        html += '</div>';
+        html += '<button class="hi-tec-btn" onclick="toggleDadosTecnicos(\'' + a.id + '\',event)">Dados técnicos</button>';
+      }
+
+      html += '<button class="hi-delete-btn" onclick="apagarAnaliseDoHistorico(\'' + sw.id + '\',\'' + a.id + '\')" aria-label="Apagar análise">' +
         '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>' +
         '</button>' +
         '</div>';
@@ -2035,6 +2082,14 @@ function renderPerfil() {
   });
 
   return html;
+}
+
+function toggleDadosTecnicos(analiseId, evt) {
+  if (evt) evt.stopPropagation();
+  const el = document.getElementById("tec_" + analiseId);
+  if (!el) return;
+  const aberto = el.style.display !== "none";
+  el.style.display = aberto ? "none" : "block";
 }
 
 function apagarAnaliseDoHistorico(swimmerId, analiseId) {
@@ -2171,7 +2226,11 @@ function renderFormulario() {
   }
 
   const campos = gerarCamposInput(state.novaAnalise.estilo, state.novaAnalise.distancia, state.novaAnalise.tamanhoPiscina, state.incluirOndulacoes, state.incluirRespiracoes);
-  const lista = state.formStep === 'tempos' ? campos.tempos : campos.ciclos;
+  // No formulário manual, campos autoCapturado (distâncias medidas pelo vídeo)
+  // não aparecem — são preenchidos automaticamente pela calibração de distância.
+  // No ecrã de marcação de vídeo (listaPontosParaMarcar) aparecem todos.
+  const listaTempos = campos.tempos.filter(function(c) { return !c.autoCapturado; });
+  const lista = state.formStep === 'tempos' ? listaTempos : campos.ciclos;
 
   // Tabs de navegação — clicáveis em qualquer direção, com flush automático
   // dos valores visíveis antes de mudar de passo (evita perda de dados).
@@ -3273,9 +3332,42 @@ function confirmarCalibracaoDistancia() {
   if (c.linha1.metros === null || c.linha2.metros === null) return;
   const metros = c.linha1.metros + c.t * (c.linha2.metros - c.linha1.metros);
   state.formData[c.campoDestino] = String(Math.round(metros * 100) / 100);
+
+  // Capturar automaticamente o tempo do cronómetro neste frame — o vídeo
+  // está parado no frame exato do breakout, por isso currentTime já tem o
+  // tempo correto. Basta converter para tempo relativo à partida (como os
+  // outros campos de tempo da app) e guardar no campo correspondente.
+  const v = getVideoEl();
+  if (v && state.video.tempoPartidaAbsoluto !== null) {
+    const campoTempo = campoDeTempoPorCampoDistancia(c.campoDestino);
+    if (campoTempo) {
+      const cronometro = Math.max(0, v.currentTime - state.video.tempoPartidaAbsoluto);
+      state.formData[campoTempo] = String(Math.round(cronometro * 100) / 100);
+      toast('Distância marcada: ' + fmtNum(metros, 2, ' m') + ' · Tempo auto: ' + fmtTempoInput(cronometro));
+    } else {
+      toast('Distância marcada: ' + fmtNum(metros, 2, ' m'));
+    }
+  } else {
+    toast('Distância marcada: ' + fmtNum(metros, 2, ' m'));
+  }
+
   fecharCalibracaoDistancia();
-  toast('Distância marcada: ' + fmtNum(metros, 2, ' m'));
   renderVideoMarkSection();
+}
+
+// Mapeia o campo de distância para o campo de tempo correspondente.
+// Quando o utilizador confirma a posição do breakout, o tempo é capturado
+// automaticamente a partir do cronómetro do vídeo nesse frame.
+function campoDeTempoPorCampoDistancia(campoDistancia) {
+  // Breakout pós-partida
+  if (campoDistancia === 'distancia_breakout_m') return 'tempo_breakout_s';
+  // Entrada das mãos na água (partida de bloco e costas)
+  if (campoDistancia === 'distancia_entrada_m') return 'tempo_entrada_maos_s';
+  if (campoDistancia === 'distancia_entrada_maos_m') return 'tempo_entrada_maos_s';
+  // Breakout pós-viragem: saida_dist_50 → tb_saida_50, etc.
+  const matchViragem = campoDistancia.match(/^saida_dist_(\d+)$/);
+  if (matchViragem) return 'tb_saida_' + matchViragem[1];
+  return null;
 }
 
 /* ---------- ECRÃ: relatório ---------- */
@@ -3341,6 +3433,16 @@ function renderRelatorio() {
   const metricsPB = (state.compararPB && melhor) ? calcularMetricas(melhor.estilo, melhor.distancia, melhor.dadosBrutos, melhor.tamanhoPiscina) : null;
 
   html += '<div id="chartsContainer">' + renderGraficos(an, metrics, metricsPB) + '</div>';
+
+  // Dados técnicos — só mostra se houver pelo menos um valor capturado automaticamente
+  const temDadosTecnicos = an.dadosBrutos && (
+    an.dadosBrutos.distancia_entrada_m || an.dadosBrutos.distancia_entrada_maos_m ||
+    an.dadosBrutos.distancia_breakout_m ||
+    Object.keys(an.dadosBrutos).some(function(k) { return k.startsWith('saida_dist_') || k.startsWith('tb_saida_'); })
+  );
+  if (temDadosTecnicos) {
+    html += renderDadosTecnicos(an, metrics, metricsPB, labelSerie1 || sw.nome, labelSerie2 || 'Melhor registo');
+  }
 
   html += '<button class="rep-btn rep-btn-ghost" onclick="editarAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Editar dados desta análise</button>';
   html += '<div style="display:flex;gap:10px;margin-top:10px">' +
@@ -3471,6 +3573,44 @@ function renderRepRowHeader(label1, label2) {
   '</div>';
 }
 
+// Gera o card de "Dados técnicos" — campos capturados automaticamente pelo
+// vídeo (distâncias e tempos de breakout/entrada) que não aparecem no
+// formulário manual mas são relevantes para consulta e verificação.
+function renderDadosTecnicos(an, m, mPB, labelSerie1, labelSerie2) {
+  const db = an.dadosBrutos || {};
+  const dbPB = mPB ? (mPB.partida ? null : null) : null; // acedemos via an2 se necessário
+  function val(id) { const v = db[id]; return (v !== undefined && v !== null && v !== '') ? parseFloat(v) : null; }
+  function fmtM(v) { return v !== null ? fmtNum(v, 2, ' m') : '—'; }
+  function fmtS(v) { return v !== null ? fmtNum(v, 2, ' s') : '—'; }
+
+  let html = '<div class="rep-card"><div class="rep-card-title">Dados técnicos</div>' +
+    '<div class="rep-card-desc">Valores capturados automaticamente pelo vídeo</div>';
+
+  // Partida
+  const dEntrada = val('distancia_entrada_m') || val('distancia_entrada_maos_m');
+  const dBreakout = val('distancia_breakout_m');
+  const tEntrada = val('tempo_entrada_maos_s');
+  const tBreakout = val('tempo_breakout_s');
+
+  if (dEntrada !== null || dBreakout !== null) {
+    html += '<div class="rep-row"><div class="rep-row-label">Partida — distância de entrada</div><div class="rep-row-value">' + fmtM(dEntrada) + '</div></div>';
+    html += '<div class="rep-row"><div class="rep-row-label">Partida — distância de breakout</div><div class="rep-row-value">' + fmtM(dBreakout) + '</div></div>';
+  }
+
+  // Viragens
+  m.porViragem.forEach(function(v) {
+    const dist = val('saida_dist_' + v.emMetros);
+    const tBreak = val('tb_saida_' + v.emMetros);
+    if (dist !== null || tBreak !== null) {
+      html += '<div class="rep-row"><div class="rep-row-label">Viragem ' + v.emMetros + 'm — distância de breakout</div><div class="rep-row-value">' + fmtM(dist) + '</div></div>';
+      html += '<div class="rep-row"><div class="rep-row-label">Viragem ' + v.emMetros + 'm — tempo do breakout</div><div class="rep-row-value">' + fmtS(tBreak) + '</div></div>';
+    }
+  });
+
+  html += '</div>';
+  return html;
+}
+
 function renderRepRow(label, v1, v2, fmt, maiorMelhor, label1, label2) {
   const COL1 = '#0096c7', COL2 = '#f4762a';
 
@@ -3517,7 +3657,7 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   html += chartCard('chart_dpc', 'Distância por ciclo', 'metros por ciclo, por troço');
 
   if (m.porViragem.length) {
-    html += chartCard('chart_viragem', 'Tempo de viragem', 'aproximação + saída (s), por viragem');
+    html += chartCard('chart_viragem', 'Tempo de viragem', 'da marca −5m ao breakout +15m (aproximação + saída), por viragem');
     html += chartCard('chart_saida', 'Breakout de viragem', 'distância de breakout (m) após cada viragem');
 
     // Card de percurso subaquático pós-viragem: distância, tempo e velocidade
@@ -3531,7 +3671,7 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
         const vPB = mPB ? mPB.porViragem[i] : null;
         const prefixo = 'Viragem ' + v.emMetros + 'm — ';
         html += renderRepRow(prefixo + 'Distância', v.distSaida, vPB ? vPB.distSaida : undefined, function(x) { return fmtNum(x, 2, ' m'); }, true, labelSerie1, labelSerie2);
-        html += renderRepRow(prefixo + 'Tempo subaquático', v.tSaida, vPB ? vPB.tSaida : undefined, function(x) { return fmtNum(x, 2, ' s'); }, false, labelSerie1, labelSerie2);
+        html += renderRepRow(prefixo + 'Tempo subaquático', v.tempoSubaquatico, vPB ? vPB.tempoSubaquatico : undefined, function(x) { return fmtNum(x, 2, ' s'); }, false, labelSerie1, labelSerie2);
         html += renderRepRow(prefixo + 'Velocidade', v.velSubaquatico, vPB ? vPB.velSubaquatico : undefined, function(x) { return fmtNum(x, 2, ' m/s'); }, true, labelSerie1, labelSerie2);
       });
       if (m.porViragem.length > 1) {
