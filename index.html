@@ -694,18 +694,18 @@ const CAMPOS_PARTIDA = {
   BLOCO: [
     { id: 'takeoff_maos_s', label: 'Take off mãos', unidade: 's', subgrupo: 'Reação e take off' },
     { id: 'takeoff_pe_posterior_s', label: 'Take off pé posterior', unidade: 's', subgrupo: 'Reação e take off' },
-    { id: 'takeoff_pe_anterior_s', label: 'Tempo de reação', unidade: 's', subgrupo: 'Reação e take off' },
-    { id: 'tempo_entrada_maos_s', label: 'Entrada das mãos na água', unidade: 's', subgrupo: 'Voo e entrada na água' },
+    { id: 'takeoff_pe_anterior_s', label: 'Take off pé anterior', unidade: 's', subgrupo: 'Reação e take off' },
+    { id: 'tempo_entrada_maos_s', label: 'Entrada das mãos na água', unidade: 's', subgrupo: 'Voo e entrada na água', autoCapturado: true },
     { id: 'distancia_entrada_m', label: 'Distância de entrada', unidade: 'm', subgrupo: 'Voo e entrada na água', autoCapturado: true },
-    { id: 'tempo_breakout_s', label: 'Tempo breakout', unidade: 's', subgrupo: 'Breakout' },
+    { id: 'tempo_breakout_s', label: 'Tempo breakout', unidade: 's', subgrupo: 'Breakout', autoCapturado: true },
     { id: 'distancia_breakout_m', label: 'Distância breakout', unidade: 'm', subgrupo: 'Breakout', autoCapturado: true },
     { id: 'aos_15m_s', label: 'Tempo aos 15m', unidade: 's', subgrupo: 'Breakout' },
   ],
   COSTAS: [
     { id: 'takeoff_maos_s', label: 'Take off mãos', unidade: 's', subgrupo: 'Reação e take off' },
-    { id: 'takeoff_pes_s', label: 'Tempo de reação', unidade: 's', subgrupo: 'Reação e take off' },
+    { id: 'takeoff_pes_s', label: 'Take off pés', unidade: 's', subgrupo: 'Reação e take off' },
     { id: 'distancia_entrada_maos_m', label: 'Distância de entrada (mãos)', unidade: 'm', subgrupo: 'Voo e entrada na água', autoCapturado: true },
-    { id: 'tempo_breakout_s', label: 'Tempo breakout', unidade: 's', subgrupo: 'Breakout' },
+    { id: 'tempo_breakout_s', label: 'Tempo breakout', unidade: 's', subgrupo: 'Breakout', autoCapturado: true },
     { id: 'distancia_breakout_m', label: 'Distância breakout', unidade: 'm', subgrupo: 'Breakout', autoCapturado: true },
     { id: 'aos_15m_s', label: 'Tempo aos 15m', unidade: 's', subgrupo: 'Breakout' },
   ],
@@ -1944,7 +1944,7 @@ function render() {
     app.innerHTML = renderFormulario();
   } else if (state.screen === 'marcarVideo') {
     backBtn.style.display = 'flex';
-    backBtn.onclick = function () { fecharVideo(); state.formStep = 'tempos'; nav('formulario'); };
+    backBtn.onclick = function () { fecharVideo(); nav('novaAnalise', { swimmerId: state.swimmerId }); };
     title.textContent = 'Marcar no vídeo';
     sub.textContent = state.video.tempoPartidaAbsoluto === null ? 'Marcar a partida' : 'Marcar pontos';
     app.innerHTML = renderMarcarVideo();
@@ -2901,7 +2901,7 @@ function clicarContinuarSelecaoProva() {
 
   if (temDadosEmCurso && mesmaProva(state.formDataProva, provaAtual)) {
     showConfirm('Continuar análise em curso?', 'Já tens dados preenchidos para esta prova. Escolhe "Confirmar" para continuar de onde estavas, ou fecha esta mensagem e toca em "Recomeçar" para começar do zero.', function () {
-      nav('formulario');
+      nav('marcarVideo');
     });
     // adiciona um botão extra de "recomeçar do zero" ao modal já aberto
     const btnRow = document.querySelector('.modal-box .btn-row');
@@ -2942,7 +2942,7 @@ function iniciarFormulario() {
   state.dataProva = new Date().toISOString().slice(0, 10);
   state.localProva = '';
   state.editandoAnaliseId = null;
-  nav('formulario');
+  nav('marcarVideo');
 }
 
 function editarAnalise(swimmerId, analiseId) {
@@ -2954,8 +2954,7 @@ function editarAnalise(swimmerId, analiseId) {
   state.dataProva = an.dataProva || an.criadoEm.slice(0, 10);
   state.localProva = an.localProva || '';
   state.editandoAnaliseId = analiseId;
-  state.formStep = 'data';
-  nav('formulario', { swimmerId: swimmerId });
+  nav('marcarVideo', { swimmerId: swimmerId });
 }
 
 /* ---------- ECRÃ: formulário sequencial ---------- */
@@ -3320,7 +3319,13 @@ function onVideoFileSelected(input) {
 // na mesma ordem cronológica usada no formulário manual.
 function listaPontosParaMarcar() {
   const campos = gerarCamposInput(state.novaAnalise.estilo, state.novaAnalise.distancia, state.novaAnalise.tamanhoPiscina, state.incluirOndulacoes, state.incluirRespiracoes);
-  return campos.tempos.filter(function (c) { return !c.isHeader; });
+  return campos.tempos.filter(function (c) {
+    if (c.isHeader) return false;
+    // Campos de tempo autoCapturado não aparecem — são preenchidos
+    // automaticamente quando se mede a distância correspondente.
+    if (c.autoCapturado && c.unidade === 's') return false;
+    return true;
+  });
 }
 
 function renderMarcarVideo() {
@@ -3610,8 +3615,7 @@ function voltarParaTemposNoVideo() {
 
 function concluirMarcacaoVideo() {
   fecharVideo();
-  state.formStep = 'ciclos';
-  nav('formulario');
+  guardarAnalise();
 }
 
 // Liga os listeners do <video> (timeupdate para atualizar o relógio em
@@ -4503,9 +4507,15 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   camposPartida.forEach(function (c) {
     const v1 = m.partida[c.id];
     const v2 = mPB ? mPB.partida[c.id] : undefined;
-    const maiorMelhor = c.unidade === 'm'; // distâncias maiores = melhor; tempos menores = melhor
+    const maiorMelhor = c.unidade === 'm';
     const fmt = c.unidade === 's' ? function(v) { return fmtNum(v, 2, ' s'); } : function(v) { return fmtNum(v, 2, ' m'); };
-    html += renderRepRow(c.label, v1, v2, fmt, maiorMelhor, labelSerie1, labelSerie2);
+    // No relatório, o take off do pé anterior aparece duas vezes:
+    // com o label técnico e com o label de análise "Tempo de reação"
+    const labelRel = c.label;
+    html += renderRepRow(labelRel, v1, v2, fmt, maiorMelhor, labelSerie1, labelSerie2);
+    if (c.id === 'takeoff_pe_anterior_s' || c.id === 'takeoff_pes_s') {
+      html += renderRepRow('Tempo de reação', v1, v2, fmt, maiorMelhor, labelSerie1, labelSerie2);
+    }
     if (c.id === 'tempo_entrada_maos_s') {
       const voo1 = m.partida.duracao_voo_s;
       const voo2 = mPB ? mPB.partida.duracao_voo_s : undefined;
