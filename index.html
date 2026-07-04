@@ -926,10 +926,12 @@ const STORAGE_KEY = 'swimlab_data_v1';
 function loadDB() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { swimmers: [] };
-    return JSON.parse(raw);
+    if (!raw) return { swimmers: [], equipas: [] };
+    const db = JSON.parse(raw);
+    if (!db.equipas) db.equipas = [];
+    return db;
   } catch (e) {
-    return { swimmers: [] };
+    return { swimmers: [], equipas: [] };
   }
 }
 function saveDB(db) {
@@ -943,6 +945,41 @@ function saveDB(db) {
 }
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+// --- EQUIPAS ---
+function getEquipas() { return loadDB().equipas; }
+function getEquipa(id) { return loadDB().equipas.find(function(e) { return e.id === id; }); }
+function createEquipa(nome, escalao, logo) {
+  const db = loadDB();
+  const e = { id: uid(), nome: nome, escalao: escalao || null, logo: logo || null };
+  db.equipas.push(e);
+  saveDB(db);
+  return e;
+}
+function updateEquipa(id, dados) {
+  const db = loadDB();
+  const e = db.equipas.find(function(e) { return e.id === id; });
+  if (e) { Object.assign(e, dados); saveDB(db); }
+}
+function deleteEquipa(id) {
+  const db = loadDB();
+  db.equipas = db.equipas.filter(function(e) { return e.id !== id; });
+  db.swimmers.forEach(function(s) { if (s.equipas) s.equipas = s.equipas.filter(function(eid) { return eid !== id; }); });
+  saveDB(db);
+}
+function getNadadoresDaEquipa(equipaId) {
+  return loadDB().swimmers.filter(function(s) { return s.equipas && s.equipas.indexOf(equipaId) !== -1; });
+}
+function toggleEquipaNadador(swimmerId, equipaId) {
+  const db = loadDB();
+  const sw = db.swimmers.find(function(s) { return s.id === swimmerId; });
+  if (!sw) return;
+  if (!sw.equipas) sw.equipas = [];
+  const idx = sw.equipas.indexOf(equipaId);
+  if (idx === -1) sw.equipas.push(equipaId); else sw.equipas.splice(idx, 1);
+  saveDB(db);
+  render();
 }
 
 function getSwimmers() {
@@ -1871,9 +1908,19 @@ function render() {
     sub.textContent = '';
     app.innerHTML = renderCompararRelatorio();
     afterRenderCompararRelatorio();
-  } else if (state.screen === 'perfil') {
+  } else if (state.screen === 'equipa') {
     backBtn.style.display = 'flex';
     backBtn.onclick = function () { nav('lista'); };
+    const eq = getEquipa(state.equipaId);
+    title.textContent = eq ? eq.nome : 'Equipa';
+    sub.textContent = eq && eq.escalao ? eq.escalao : 'Nadadores';
+    app.innerHTML = renderEquipa();
+  } else if (state.screen === 'perfil') {
+    backBtn.style.display = 'flex';
+    backBtn.onclick = function () {
+      if (state.voltarPara === 'equipa') nav('equipa', { equipaId: state.equipaId });
+      else nav('lista');
+    };
     const sw = getSwimmer(state.swimmerId);
     title.textContent = sw ? sw.nome : 'Perfil';
     sub.textContent = 'Histórico de análises';
@@ -1929,21 +1976,43 @@ function ESTILOS_LABEL(estilo) {
 
 function renderListaNadadores() {
   const swimmers = getSwimmers();
+  const equipas = getEquipas();
   let html = '';
-  if (!swimmers.length) {
-    html += '<div class="empty-state"><p>Ainda não tens nenhum perfil de nadador.<br>Cria o primeiro para começar a registar análises.</p></div>';
-  } else {
-    html += '<button class="btn btn-ghost" style="margin-bottom:10px" onclick="nav(\'compararSelecao\')">Comparar análises</button>';
+
+  // Equipas
+  equipas.slice().sort(function(a,b){return a.nome.localeCompare(b.nome);}).forEach(function(e) {
+    const n = getNadadoresDaEquipa(e.id).length;
+    html += '<div class="swimmer-item" onclick="nav(\'equipa\',{equipaId:\'' + e.id + '\'})">' +
+      '<div class="swimmer-avatar" style="border-radius:10px;background:var(--bg3);border:1px solid var(--border)">' +
+      (e.logo ? '<img src="' + e.logo + '" style="width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box">' : '<span style="font-size:16px;font-weight:800">' + escapeHtml((e.nome[0]||'').toUpperCase()) + '</span>') +
+      '</div>' +
+      '<div class="swimmer-info"><div class="name">' + escapeHtml(e.nome) + '</div>' +
+      '<div class="meta">' + (e.escalao ? escapeHtml(e.escalao) + ' · ' : '') + n + ' nadador' + (n===1?'':'es') + '</div></div>' +
+      '<div class="chevron">›</div></div>';
+  });
+
+  // Card tracejado de adicionar equipa — mesmas dimensões do swimmer-item
+  html += '<button class="btn btn-ghost" style="margin-bottom:10px;width:100%" onclick="mostrarModalEquipa(null)">+ Adicionar equipa</button>';
+
+  // Nadadores sem equipa
+  const soltos = swimmers.filter(function(s){ return !s.equipas || s.equipas.length === 0; });
+  if (swimmers.length) {
+    html += '<button class="btn btn-primary" style="margin-bottom:10px;width:100%" onclick="nav(\'compararSelecao\')">Comparar análises</button>';
   }
-  html += '<button class="btn btn-ghost" style="margin-bottom:14px;font-size:13px;color:var(--txt3)" onclick="gerarAnaliseExemplo()">Ver exemplo de relatório</button>';
-  swimmers.slice().sort(function(a,b){return a.nome.localeCompare(b.nome);}).forEach(function (s) {
+  soltos.slice().sort(function(a,b){return a.nome.localeCompare(b.nome);}).forEach(function(s) {
     html += '<div class="swimmer-item" onclick="nav(\'perfil\',{swimmerId:\'' + s.id + '\'})">' +
       avatarHtml(s, 44) +
       '<div class="swimmer-info"><div class="name">' + escapeHtml(s.nome) + '</div>' +
       '<div class="meta">' + s.analises.length + ' análise' + (s.analises.length === 1 ? '' : 's') + '</div></div>' +
       '<div class="chevron">›</div></div>';
   });
-  html += '<button class="fab" onclick="abrirNovoNadador()">+</button>';
+
+  html += '<button class="btn btn-ghost" style="margin-bottom:10px;width:100%" onclick="abrirNovoNadador()">+ Adicionar nadador</button>';
+
+  if (!swimmers.length && !equipas.length) {
+    html += '<div class="empty-state"><p>Começa por adicionar uma equipa ou um nadador.</p></div>';
+  }
+
   return html;
 }
 
@@ -2082,6 +2151,81 @@ function gerarAnaliseExemplo() {
   nav('relatorio', { swimmerId: sw.id, verAnaliseId: analise.id, compararPB: false });
 }
 
+function renderEquipa() {
+  const e = getEquipa(state.equipaId);
+  if (!e) return '<div class="empty-state"><p>Equipa não encontrada.</p></div>';
+  const nadadores = getNadadoresDaEquipa(e.id);
+  let html = '<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:16px">' +
+    '<div class="swimmer-avatar" style="border-radius:10px;background:var(--bg3);border:1px solid var(--border);flex-shrink:0">' +
+    (e.logo ? '<img src="' + e.logo + '" style="width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box">' : '<span style="font-size:16px;font-weight:800">' + escapeHtml((e.nome[0]||'').toUpperCase()) + '</span>') +
+    '</div>' +
+    '<div style="flex:1"><div style="font-size:17px;font-weight:700">' + escapeHtml(e.nome) + '</div>' +
+    (e.escalao ? '<div style="font-size:13px;color:var(--txt3)">' + escapeHtml(e.escalao) + '</div>' : '') + '</div>' +
+    '<button class="btn btn-ghost btn-sm" onclick="mostrarModalEquipa(getEquipa(\'' + e.id + '\'))">Editar</button>' +
+    '</div>';
+  if (!nadadores.length) {
+    html += '<div class="empty-state"><p>Ainda não há nadadores nesta equipa.<br>Associa nadadores a partir do perfil de cada um.</p></div>';
+  } else {
+    nadadores.slice().sort(function(a,b){return a.nome.localeCompare(b.nome);}).forEach(function(s) {
+      html += '<div class="swimmer-item" onclick="nav(\'perfil\',{swimmerId:\'' + s.id + '\',voltarPara:\'equipa\',equipaId:\'' + e.id + '\'})">' +
+        avatarHtml(s, 44) +
+        '<div class="swimmer-info"><div class="name">' + escapeHtml(s.nome) + '</div>' +
+        '<div class="meta">' + s.analises.length + ' análise' + (s.analises.length === 1 ? '' : 's') + '</div></div>' +
+        '<div class="chevron">›</div></div>';
+    });
+  }
+  return html;
+}
+
+function mostrarModalEquipa(equipaExistente) {
+  let logoNovo = null;
+  const logoActual = equipaExistente ? equipaExistente.logo : null;
+  const root = document.getElementById('modalRoot');
+  root.innerHTML =
+    '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' +
+    '<div class="modal-box">' +
+    '<div class="modal-title">' + (equipaExistente ? 'Editar equipa' : 'Nova equipa') + '</div>' +
+    '<div style="text-align:center;margin-bottom:14px">' +
+    '<div id="eqLogoPreview" onclick="document.getElementById(\'eqLogoInput\').click()" style="width:64px;height:64px;border-radius:12px;background:var(--bg3);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;cursor:pointer;overflow:hidden;font-size:22px;font-weight:800">' +
+    (logoActual ? '<img src="' + logoActual + '" style="width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box">' : '+') +
+    '</div><div style="font-size:11px;color:var(--txt3)">Logo (opcional)</div>' +
+    '<input type="file" id="eqLogoInput" accept="image/*" style="display:none"></div>' +
+    '<label class="field-label">Nome da equipa</label>' +
+    '<input type="text" id="eqNome" value="' + (equipaExistente ? escapeHtml(equipaExistente.nome) : '') + '" placeholder="ex: Sport Lisboa e Benfica" style="width:100%;box-sizing:border-box">' +
+    '<label class="field-label" style="margin-top:12px">Escalão (opcional)</label>' +
+    '<input type="text" id="eqEscalao" value="' + (equipaExistente ? escapeHtml(equipaExistente.escalao||'') : '') + '" placeholder="ex: Juvenis" style="width:100%;box-sizing:border-box">' +
+    '<div class="btn-row" style="margin-top:16px">' +
+    '<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>' +
+    '<button class="btn btn-primary" id="eqGuardar">Guardar</button></div>' +
+    (equipaExistente ? '<button class="btn btn-ghost" style="margin-top:8px;color:#f29999;border-color:rgba(239,68,68,0.3)" onclick="confirmarApagarEquipa(\'' + equipaExistente.id + '\')">Apagar equipa</button>' : '') +
+    '</div></div>';
+
+  document.getElementById('eqLogoInput').onchange = function() {
+    const file = this.files && this.files[0]; if (!file) return;
+    const r = new FileReader();
+    r.onload = function(ev) {
+      logoNovo = ev.target.result;
+      document.getElementById('eqLogoPreview').innerHTML = '<img src="' + logoNovo + '" style="width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box">';
+    };
+    r.readAsDataURL(file);
+  };
+  document.getElementById('eqGuardar').onclick = function() {
+    const nome = document.getElementById('eqNome').value.trim();
+    if (!nome) { document.getElementById('eqNome').focus(); return; }
+    const escalao = document.getElementById('eqEscalao').value.trim();
+    const logo = logoNovo || logoActual;
+    if (equipaExistente) { updateEquipa(equipaExistente.id, { nome: nome, escalao: escalao||null, logo: logo||null }); closeModal(); nav('equipa', { equipaId: equipaExistente.id }); }
+    else { const eq = createEquipa(nome, escalao, logo); closeModal(); nav('equipa', { equipaId: eq.id }); }
+  };
+  setTimeout(function(){ const el = document.getElementById('eqNome'); if(el) el.focus(); }, 50);
+}
+
+function confirmarApagarEquipa(id) {
+  showConfirm('Apagar equipa', 'Apagar esta equipa? Os nadadores não são apagados.', function() {
+    deleteEquipa(id); closeModal(); nav('lista');
+  });
+}
+
 function abrirNovoNadador() {
   showModalNadador('Novo nadador', null, function (dados) {
     const s = createSwimmer(dados.nome, dados.sexo, dados.dataNascimento);
@@ -2138,6 +2282,24 @@ function renderPerfil() {
     '<button class="btn btn-ghost btn-sm" onclick="importarDadosAnalise(\'' + sw.id + '\')" style="flex:0 0 auto">Importar dados</button>' +
     '<button class="btn btn-ghost btn-sm" onclick="apagarNadador(\'' + sw.id + '\')" style="flex:0 0 auto">Apagar perfil</button>' +
     '</div></div>';
+
+  // Equipas
+  const todasEquipas = getEquipas();
+  if (todasEquipas.length) {
+    const equipasDoNadador = sw.equipas || [];
+    html += '<div class="card"><div class="card-title">Equipas</div>';
+    todasEquipas.forEach(function(e) {
+      const membro = equipasDoNadador.indexOf(e.id) !== -1;
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">' +
+        '<div class="swimmer-avatar" style="width:32px;height:32px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);font-size:12px;flex-shrink:0">' +
+        (e.logo ? '<img src="' + e.logo + '" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box">' : escapeHtml((e.nome[0]||'').toUpperCase())) +
+        '</div>' +
+        '<div style="flex:1;font-size:14px;font-weight:600">' + escapeHtml(e.nome) + (e.escalao ? ' <span style="font-size:11px;color:var(--txt3)">' + escapeHtml(e.escalao) + '</span>' : '') + '</div>' +
+        '<button class="btn btn-ghost btn-sm" onclick="toggleEquipaNadador(\'' + sw.id + '\',\'' + e.id + '\')" style="' + (membro ? 'color:var(--accent)' : '') + '">' + (membro ? 'Remover' : 'Adicionar') + '</button>' +
+        '</div>';
+    });
+    html += '</div>';
+  }
 
   if (!sw.analises.length) {
     html += '<div class="empty-state"><p>Ainda não há análises registadas.<br>Cria a primeira para começar a construir o histórico deste nadador.</p></div>';
@@ -4120,9 +4282,16 @@ function exportarDadosAnalise(swimmerId, analiseId) {
 }
 
 function importarDadosAnalise(swimmerId) {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json,application/json';
+  let input = document.getElementById('_importInput');
+  if (!input) {
+    input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.id = '_importInput';
+    input.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0;';
+    document.body.appendChild(input);
+  }
+  input.value = '';
   input.onchange = function() {
     const file = input.files && input.files[0];
     if (!file) return;
@@ -4611,7 +4780,21 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
         layout: { padding: { top: 28, bottom: 4, left: 4, right: 4 } },
         plugins: plugins,
         scales: {
-          y: { beginAtZero: beginAtZero, grid: { color: '#eef1f4' }, ticks: { color: '#93a1ac', callback: function (v) { return formatador(v) + (unidade || ''); } } },
+          y: {
+            beginAtZero: beginAtZero,
+            grid: { color: '#eef1f4' },
+            ticks: {
+              color: '#93a1ac',
+              maxTicksLimit: 5,
+              callback: function (v) { return formatador(v) + (unidade || ''); }
+            },
+            afterDataLimits: beginAtZero ? undefined : function(axis) {
+              const range = axis.max - axis.min;
+              const margem = range * 0.20;
+              axis.min = axis.min - margem;
+              axis.max = axis.max + margem;
+            },
+          },
           x: { grid: { display: false }, ticks: { color: '#5b6b78', font: { size: 10, weight: '700' } } },
         },
       },
