@@ -1452,10 +1452,15 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
     const distanciaTroço = t.fim - t.inicio;
     // Ciclos — usar posição em metros para determinar a perna correcta
     var nCiclos = n('nc_' + t.inicio + '_' + t.fim);  // novo medley: nc_15_25
-    if (nCiclos === null) nCiclos = n('nc_' + t.id);   // não-medley novo: nc_p1, nc_p2
-    if (nCiclos === null && prova.isMedley) {
-      var pernaIdxC = Math.floor(t.inicio / 50) + 1;
-      nCiclos = n('nc_' + t.id + '_perna' + pernaIdxC); // antigo medley: nc_p1a_perna1
+    if (nCiclos === null) {
+      if (prova.isMedley) {
+        // Para medley: usar sempre ID com perna — o ID genérico (nc_p1a) pode
+        // ter valores errados de análises antigas
+        var pernaIdxC = Math.floor(t.inicio / 50) + 1;
+        nCiclos = n('nc_' + t.id + '_perna' + pernaIdxC); // nc_p1a_perna2, etc.
+      } else {
+        nCiclos = n('nc_' + t.id);   // não-medley: nc_p1a, nc_p1b, nc_p1, nc_p2
+      }
     }
 
     let freq = null, distPorCiclo = null, vel = null;
