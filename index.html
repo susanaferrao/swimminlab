@@ -895,8 +895,14 @@ function gerarProvaMedley(distanciaTotal, tamanhoPiscina) {
 
 /* ---------- API pública: obter definição de uma prova ---------- */
 
-const DISTANCIAS_POR_ESTILO = [50, 100, 200, 400, 800, 1500];
-const DISTANCIAS_MEDLEY = [200, 400];
+const DISTANCIAS_POR_ESTILO = {
+  LIVRES:   [50, 100, 200, 400, 800, 1500],
+  COSTAS:   [50, 100, 200],
+  BRUCOS:   [50, 100, 200],
+  MARIPOSA: [50, 100, 200],
+  ESTILOS:  [100, 200, 400], // 100m só existe em piscina 25m
+};
+const DISTANCIAS_MEDLEY = [100, 200, 400];
 const TAMANHOS_PISCINA = [25, 50];
 
 function obterProva(estilo, distancia, tamanhoPiscina) {
@@ -908,7 +914,7 @@ function obterProva(estilo, distancia, tamanhoPiscina) {
 function provasDisponiveis() {
   const lista = [];
   ['LIVRES', 'COSTAS', 'BRUCOS', 'MARIPOSA'].forEach(function (estilo) {
-    DISTANCIAS_POR_ESTILO.forEach(function (d) {
+    DISTANCIAS_POR_ESTILO[estilo].forEach(function (d) {
       lista.push({ estilo: estilo, distancia: d, label: ESTILOS[estilo].nome + ' ' + d + 'm' });
     });
   });
@@ -2521,7 +2527,14 @@ function renderPerfil() {
     grupos[k].lista.push(a);
   });
 
-  Object.keys(grupos).sort().forEach(function (k) {
+  const ORDEM_ESTILOS_HIST = ["LIVRES","COSTAS","BRUCOS","MARIPOSA","ESTILOS"];
+  Object.keys(grupos).sort(function(a,b) {
+    var ga=grupos[a],gb=grupos[b];
+    var oa=ORDEM_ESTILOS_HIST.indexOf(ga.estilo),ob=ORDEM_ESTILOS_HIST.indexOf(gb.estilo);
+    if(oa!==ob) return oa-ob;
+    if(ga.distancia!==gb.distancia) return ga.distancia-gb.distancia;
+    return ga.tamanhoPiscina-gb.tamanhoPiscina;
+  }).forEach(function (k) {
     const g = grupos[k];
     g.lista.sort(function (a, b) { return new Date(b.dataProva || b.criadoEm) - new Date(a.dataProva || a.criadoEm); });
     const melhorId = g.lista.reduce(function (best, a) { return (!best || a.tempoTotal < best.tempoTotal) ? a : best; }, null).id;
@@ -3182,7 +3195,7 @@ function editarAnalise(swimmerId, analiseId) {
 
   const estilosOpts = ['LIVRES','COSTAS','BRUCOS','MARIPOSA','ESTILOS'];
   const estilosNomes = { LIVRES:'Livres', COSTAS:'Costas', BRUCOS:'Bruços', MARIPOSA:'Mariposa', ESTILOS:'Estilos' };
-  const distanciasOpts = [50,100,200,400,800,1500];
+  const distanciasOpts = DISTANCIAS_POR_ESTILO[estiloAtual] || [50,100,200];
 
   const root = document.getElementById('modalRoot');
   root.innerHTML =
