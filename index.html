@@ -1440,27 +1440,22 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
 
     // Tempo de fim do troço — usar posição em metros como chave principal
     var tAbsFim = n('tt_' + t.fim + 'm');           // novo formato: tt_45m, tt_25m, etc.
-    if (tAbsFim === null) tAbsFim = n('tt_' + t.id); // formato antigo não-medley: tt_p1a, tt_p1b
+    if (tAbsFim === null) tAbsFim = n('tt_' + t.id); // não-medley: tt_p1, tt_p2, etc.
+    if (tAbsFim === null) tAbsFim = n('tt_' + t.id + 'b'); // antigo dividido: tt_p1b, tt_p2b, etc.
     if (tAbsFim === null && prova.isMedley) {
-      // Formato antigo medley: tt_p1a_perna1, tt_p1b_perna2, etc.
-      // Determinar a perna pelo offset de metros
-      var pernaIdx = Math.floor(t.fim / 50);
-      tAbsFim = n('tt_' + t.id + '_perna' + (pernaIdx + 1));
-      if (tAbsFim === null) tAbsFim = n('tt_p1b_perna' + (pernaIdx + 1)); // fallback: sempre p1b
+      var pernaIdx = Math.floor(t.inicio / 50) + 1;
+      tAbsFim = n('tt_' + t.id + '_perna' + pernaIdx);        // tt_p1b_perna2
+      if (tAbsFim === null) tAbsFim = n('tt_p1b_perna' + pernaIdx); // fallback perna
     }
     const tAbsInicio = tempoAbsolutoNoInicioDoTroço(t, troçosLimpos);
     const duracao = (tAbsFim !== null && tAbsInicio !== null) ? (tAbsFim - tAbsInicio) : null;
     const distanciaTroço = t.fim - t.inicio;
     // Ciclos — usar posição em metros para determinar a perna correcta
     var nCiclos = n('nc_' + t.inicio + '_' + t.fim);  // novo medley: nc_15_25
+    if (nCiclos === null) nCiclos = n('nc_' + t.id);   // não-medley novo: nc_p1, nc_p2
     if (nCiclos === null && prova.isMedley) {
-      // Formato antigo medley: nc_p1a_perna1, nc_p1b_perna2, etc.
-      // Perna determinada pelos metros: 0-50m=perna1, 50-100m=perna2, etc.
       var pernaIdxC = Math.floor(t.inicio / 50) + 1;
-      nCiclos = n('nc_' + t.id + '_perna' + pernaIdxC);
-    }
-    if (nCiclos === null && !prova.isMedley) {
-      nCiclos = n('nc_' + t.id); // não-medley: nc_p1a, nc_p1b, etc.
+      nCiclos = n('nc_' + t.id + '_perna' + pernaIdxC); // antigo medley: nc_p1a_perna1
     }
 
     let freq = null, distPorCiclo = null, vel = null;
