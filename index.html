@@ -1382,8 +1382,23 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
   function tempoAbsolutoNoInicioDoTroço(t, todosOsTroços) {
     if (t.inicio === 15) return n('aos_15m_s');
     if (t.apósViragemEm !== undefined) return n('tv_saida_' + t.apósViragemEm);
+    // Verificar se o início corresponde a uma saída de viragem (tv_saida_X)
+    // As saídas de viragem estão sempre 15m após a viragem: 65m=após50m, 115m=após100m, 165m=após150m
+    if (t.inicio === 65 || t.inicio === 115 || t.inicio === 165) {
+      return n('tv_saida_' + (t.inicio - 15));
+    }
     const anterior = todosOsTroços.find(function (tt) { return tt.fim === t.inicio; });
-    if (anterior) return n('tt_' + anterior.id);
+    if (anterior) {
+      var v = n('tt_' + anterior.fim + 'm');
+      if (v !== null) return v;
+      v = n('tt_' + anterior.id);
+      if (v !== null) return v;
+      if (prova.isMedley) {
+        var pernaIdx = Math.floor(anterior.fim / 50);
+        v = n('tt_' + anterior.id + '_perna' + (pernaIdx + 1));
+        if (v !== null) return v;
+      }
+    }
     return null;
   }
 
@@ -1423,11 +1438,30 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
       return;
     }
 
-    const tAbsFim = n('tt_' + t.id);
+    // Tempo de fim do troço — usar posição em metros como chave principal
+    var tAbsFim = n('tt_' + t.fim + 'm');           // novo formato: tt_45m, tt_25m, etc.
+    if (tAbsFim === null) tAbsFim = n('tt_' + t.id); // formato antigo não-medley: tt_p1a, tt_p1b
+    if (tAbsFim === null && prova.isMedley) {
+      // Formato antigo medley: tt_p1a_perna1, tt_p1b_perna2, etc.
+      // Determinar a perna pelo offset de metros
+      var pernaIdx = Math.floor(t.fim / 50);
+      tAbsFim = n('tt_' + t.id + '_perna' + (pernaIdx + 1));
+      if (tAbsFim === null) tAbsFim = n('tt_p1b_perna' + (pernaIdx + 1)); // fallback: sempre p1b
+    }
     const tAbsInicio = tempoAbsolutoNoInicioDoTroço(t, troçosLimpos);
     const duracao = (tAbsFim !== null && tAbsInicio !== null) ? (tAbsFim - tAbsInicio) : null;
     const distanciaTroço = t.fim - t.inicio;
-    const nCiclos = n('nc_' + t.id);
+    // Ciclos — usar posição em metros para determinar a perna correcta
+    var nCiclos = n('nc_' + t.inicio + '_' + t.fim);  // novo medley: nc_15_25
+    if (nCiclos === null && prova.isMedley) {
+      // Formato antigo medley: nc_p1a_perna1, nc_p1b_perna2, etc.
+      // Perna determinada pelos metros: 0-50m=perna1, 50-100m=perna2, etc.
+      var pernaIdxC = Math.floor(t.inicio / 50) + 1;
+      nCiclos = n('nc_' + t.id + '_perna' + pernaIdxC);
+    }
+    if (nCiclos === null && !prova.isMedley) {
+      nCiclos = n('nc_' + t.id); // não-medley: nc_p1a, nc_p1b, etc.
+    }
 
     let freq = null, distPorCiclo = null, vel = null;
     if (duracao && duracao > 0) vel = distanciaTroço / duracao;
@@ -1544,43 +1578,55 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
     // Os troços de nado limpo terminam sempre a 45m, 95m, 145m, 195m (piscina 50m)
     // As saídas de viragem estão sempre a 65m, 115m, 165m
     const t15  = n('aos_15m_s');
-    const t45  = n('tt_45m')  !== null ? n('tt_45m')  : n('tt_p1');
+    const t45  = n('tt_45m')  !== null ? n('tt_45m')  : (n('tt_p1')  !== null ? n('tt_p1')  : (n('tt_p1b') !== null ? n('tt_p1b') : n('tt_p1b_perna1')));
     const t65  = n('tv_saida_50');
-    const t95  = n('tt_95m')  !== null ? n('tt_95m')  : n('tt_p2');
+    const t95  = n('tt_95m')  !== null ? n('tt_95m')  : (n('tt_p2')  !== null ? n('tt_p2')  : n('tt_p1b_perna2'));
     const t115 = n('tv_saida_100');
-    const t145 = n('tt_145m') !== null ? n('tt_145m') : n('tt_p3');
+    const t145 = n('tt_145m') !== null ? n('tt_145m') : (n('tt_p3')  !== null ? n('tt_p3')  : n('tt_p1b_perna3'));
     const t165 = n('tv_saida_150');
-    const t195 = n('tt_195m') !== null ? n('tt_195m') : n('tt_p4');
-    // Ciclos de nado limpo — IDs variam por estilo:
-    // Não-medley: nc_p1, nc_p2, nc_p3, nc_p4
-    // Medley novo: nc_15_25 + nc_25_45 = piscina 1, nc_65_75 + nc_75_95 = piscina 2, etc.
-    // Medley antigo: nc_p1a_perna1 + nc_p1b_perna1, etc.
-    function somarCiclos(idA, idB, idLegado) {
-      var vA = n(idA), vB = n(idB);
-      if (vA !== null && vB !== null) return vA + vB;
-      var leg = n(idLegado);
-      if (leg !== null) return leg;
-      return null;
+    const t195 = n('tt_195m') !== null ? n('tt_195m') : (n('tt_p4')  !== null ? n('tt_p4')  : n('tt_p1b_perna4'));
+    // Tempos intermédios para sub-troços de 10m/20m
+    const t25  = n('parc_25m')  !== null ? n('parc_25m')  : n('tt_25m');
+    const t75  = n('parc_75m')  !== null ? n('parc_75m')  : n('tt_75m');
+    const t125 = n('parc_125m') !== null ? n('parc_125m') : n('tt_125m');
+    const t175 = n('parc_175m') !== null ? n('parc_175m') : n('tt_175m');
+
+    // Ciclos por sub-troço (medley: separados por perna; não-medley: nc_p1a/nc_p1b)
+    function getCiclos(novoId, antigoId, antigoLegado) {
+      var v = n(novoId); if (v !== null) return v;
+      v = n(antigoId);   if (v !== null) return v;
+      return n(antigoLegado);
     }
-    var nc1, nc2, nc3, nc4;
+    var nc1a, nc1b, nc2a, nc2b, nc3a, nc3b, nc4a, nc4b;
     if (prova.isMedley) {
-      function somarPerna(a, b, legA, legB) {
-        var vA = n(a) !== null ? n(a) : n(legA);
-        var vB = n(b) !== null ? n(b) : n(legB);
-        return (vA !== null && vB !== null) ? vA + vB : (vA !== null ? vA : vB);
-      }
-      nc1 = somarPerna('nc_15_25', 'nc_25_45', 'nc_p1a_perna1', 'nc_p1b_perna1');
-      nc2 = somarPerna('nc_65_75', 'nc_75_95', 'nc_p1a_perna2', 'nc_p1b_perna2');
-      nc3 = somarPerna('nc_115_125', 'nc_125_145', 'nc_p1a_perna3', 'nc_p1b_perna3');
-      nc4 = somarPerna('nc_165_175', 'nc_175_195', 'nc_p1a_perna4', 'nc_p1b_perna4');
+      nc1a = getCiclos('nc_15_25',  'nc_p1a_perna1', null);
+      nc1b = getCiclos('nc_25_45',  'nc_p1b_perna1', null);
+      nc2a = getCiclos('nc_65_75',  'nc_p1a_perna2', null);
+      nc2b = getCiclos('nc_75_95',  'nc_p1b_perna2', null);
+      nc3a = getCiclos('nc_115_125','nc_p1a_perna3', null);
+      nc3b = getCiclos('nc_125_145','nc_p1b_perna3', null);
+      nc4a = getCiclos('nc_165_175','nc_p1a_perna4', null);
+      nc4b = getCiclos('nc_175_195','nc_p1b_perna4', null);
     } else {
-      nc1 = n('nc_p1'); nc2 = n('nc_p2'); nc3 = n('nc_p3'); nc4 = n('nc_p4');
+      nc1a = getCiclos('nc_p1a', null, null);
+      nc1b = getCiclos('nc_p1b', null, null);
+      nc2a = getCiclos('nc_p2a', null, null);
+      nc2b = getCiclos('nc_p2b', null, null);
+      nc3a = getCiclos('nc_p3a', null, null);
+      nc3b = getCiclos('nc_p3b', null, null);
+      nc4a = getCiclos('nc_p4a', null, null);
+      nc4b = getCiclos('nc_p4b', null, null);
     }
+
     out.ciclosPorSubTroço = [
-      Object.assign({ label: '15-45m (1ª piscina)' }, calcTroço200(nc1, 30, t15, t45)),
-      Object.assign({ label: '65-95m (2ª piscina)' }, calcTroço200(nc2, 30, t65, t95)),
-      Object.assign({ label: '115-145m (3ª piscina)' }, calcTroço200(nc3, 30, t115, t145)),
-      Object.assign({ label: '165-195m (4ª piscina)' }, calcTroço200(nc4, 30, t165, t195)),
+      Object.assign({ label: '15-25m' },  calcTroço200(nc1a, 10, t15,  t25)),
+      Object.assign({ label: '25-45m' },  calcTroço200(nc1b, 20, t25,  t45)),
+      Object.assign({ label: '65-75m' },  calcTroço200(nc2a, 10, t65,  t75)),
+      Object.assign({ label: '75-95m' },  calcTroço200(nc2b, 20, t75,  t95)),
+      Object.assign({ label: '115-125m' },calcTroço200(nc3a, 10, t115, t125)),
+      Object.assign({ label: '125-145m' },calcTroço200(nc3b, 20, t125, t145)),
+      Object.assign({ label: '165-175m' },calcTroço200(nc4a, 10, t165, t175)),
+      Object.assign({ label: '175-195m' },calcTroço200(nc4b, 20, t175, t195)),
     ];
   }
   const totalBraçadas = out.porBloco50.reduce(function(acc, b) { return (b.bracadas !== null) ? acc + b.bracadas : acc; }, 0);
@@ -1693,7 +1739,24 @@ function tempoAbsolutoEntradaAproximacao(viragem, prova, dados) {
     ? prova.troços.reduce(function (acc, tr) { return acc.concat(tr.troçosPiscinaLimpa); }, [])
     : prova.troçosPiscinaLimpa;
   const tAnterior = todosTroços.find(function (t) { return t.fim === viragem.emMetros - 5; });
-  if (tAnterior) return n('tt_' + tAnterior.id);
+  if (tAnterior) {
+    // Tentar vários formatos de ID conforme a versão dos dados guardados:
+    // 1. ID baseado em metros: tt_45m, tt_95m, etc. (formato actual)
+    // 2. ID do troço: tt_p1b, tt_p2b, etc. (formato não-medley antigo)
+    // 3. ID do troço com perna: tt_p1b_perna1, tt_p1b_perna2, etc. (formato medley antigo)
+    var perna = prova.isMedley ? prova.troços.findIndex(function(tr) {
+      return tr.troçosPiscinaLimpa.some(function(t) { return t.fim === tAnterior.fim; });
+    }) + 1 : null;
+    var vMetros = n('tt_' + tAnterior.fim + 'm');
+    if (vMetros !== null) return vMetros;
+    var vId = n('tt_' + tAnterior.id);
+    if (vId !== null && perna === null) return vId; // só usar para não-medley
+    if (perna !== null) {
+      var vPerna = n('tt_p1b_perna' + perna);
+      if (vPerna !== null) return vPerna;
+    }
+    return vId;
+  }
   if (viragem.emMetros - 5 === 15) return n('aos_15m_s');
   return null;
 }
