@@ -4794,12 +4794,8 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   }
 
   // Troços de nado limpo 200m piscina 50m
-  if (é200p50 && m.ciclosPorSubTroço) {
-    if (m.parciais25) html += chartCard('chart_parc25', 'Parciais a cada 25m', '0-25m · 25-50m · 50-75m · 75-100m · 100-125m · 125-150m · 150-175m · 175-200m');
-    html += chartCard('chart_vel_sub', 'Velocidade de nado por piscina', 'm/s · por percurso de nado limpo');
-    html += chartCard('chart_freq_sub', 'Frequência de braçada por piscina', 'ciclos/min · por percurso de nado limpo');
-    html += chartCard('chart_dist_ciclo_sub', 'Distância por ciclo por piscina', 'm/ciclo · por percurso de nado limpo');
-    html += chartCard('chart_ciclos_sub', 'Ciclos por piscina', 'contagem de ciclos de nado limpo');
+  if (é200p50 && m.parciais25) {
+    html += chartCard('chart_parc25', 'Parciais a cada 25m', '0-25m · 25-50m · 50-75m · 75-100m · 100-125m · 125-150m · 150-175m · 175-200m');
   }
 
   if (m.ondulacoes.length) {
