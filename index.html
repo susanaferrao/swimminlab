@@ -857,15 +857,7 @@ function gerarProvaMedley(distanciaTotal, tamanhoPiscina) {
       ordem: i + 1,
       offset: offset,
       distancia: distanciaPorTroço,
-      troçosPiscinaLimpa: gerarTroçosPiscinaLimpa(distanciaPorTroço, tamanhoPiscina, offset).map(function (t) {
-        // Os IDs devolvidos por gerarTroçosPiscinaLimpa (ex: 'p1a', 'p1b') são
-        // relativos a UM troço isolado — não incluem a perna do estilo. Em
-        // provas de Estilos há 4 pernas, cada uma a chamar esta função, e sem
-        // este sufixo os IDs repetiam-se nas 4 pernas (ex: 'p1a' na
-        // mariposa E nas bruços), fazendo com que marcar um tempo escrevesse
-        // no mesmo campo das outras pernas.
-        return Object.assign({}, t, { id: t.id + '_perna' + (i + 1) });
-      }),
+      troçosPiscinaLimpa: gerarTroçosPiscinaLimpa(distanciaPorTroço, tamanhoPiscina, offset),
       blocos50m: gerarBlocosCiclos(distanciaPorTroço, tamanhoPiscina, offset),
     };
   });
@@ -1162,7 +1154,7 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
           tempos.push({ id: 'tt_' + e.t.id, label: 'Tempo aos ' + e.t.fim + 'm', sub: percursoLocal(e.t.fim, tamanhoPiscina), unidade: 's', group: 'Percurso da prova' });
         }
       } else if (e.tipo === 'parcial25') {
-        tempos.push({ id: 'tt_' + e.metros + 'm', label: 'Tempo aos ' + e.metros + 'm', sub: percursoLocal(e.metros, tamanhoPiscina), unidade: 's', group: 'Percurso da prova' });
+        tempos.push({ id: 'parc_' + e.metros + 'm', label: 'Tempo aos ' + e.metros + 'm', sub: percursoLocal(e.metros, tamanhoPiscina), unidade: 's', group: 'Percurso da prova' });
       } else if (e.tipo === 'viragem_aprox5') {
         const sub = 'Viragem aos ' + e.v.emMetros + 'm';
         tempos.push({ id: 'tv_pre5_' + e.v.emMetros, label: 'Tempo aos ' + (e.v.emMetros - 5) + 'm', sub: percursoLocal(e.v.emMetros - 5, tamanhoPiscina), unidade: 's', group: 'Percurso da prova', subgrupo: sub });
@@ -1281,7 +1273,7 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
     eventos.forEach(function (e) {
       if (e.tipo === 'troço') {
         if (!e.t.baseadoNoBreakout) {
-          tempos.push({ id: 'tt_' + e.t.id, label: 'Tempo aos ' + e.t.fim + 'm', sub: percursoLocal(e.t.fim, tamanhoPiscina) + ' · ' + ESTILOS[e.t.estilo].nome, unidade: 's', group: 'Percurso da prova' });
+          tempos.push({ id: 'tt_' + e.t.fim + 'm', label: 'Tempo aos ' + e.t.fim + 'm', sub: percursoLocal(e.t.fim, tamanhoPiscina) + ' · ' + ESTILOS[e.t.estilo].nome, unidade: 's', group: 'Percurso da prova' });
         }
       } else if (e.tipo === 'viragem_aprox5') {
         const tag = ' · ' + ESTILOS[e.v.estiloEntrada].nome;
@@ -1331,7 +1323,7 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
         ciclos.push({ id: 'ciclos_' + e.b.id, label: 'Ciclos entre ' + e.b.inicio + '-' + e.b.fim + 'm', unidade: 'ciclos', group: 'Ciclos e ondulações' });
       } else if (e.tipo === 'troço') {
         if (!e.t.baseadoNoBreakout) {
-          ciclos.push({ id: 'nc_' + e.t.id, label: 'Nº de ciclos entre ' + e.t.label, sub: percursoLocal(e.t.inicio, tamanhoPiscina) + ' até ' + percursoLocal(e.t.fim, tamanhoPiscina) + ' · ' + ESTILOS[e.t.estilo].nome, unidade: 'ciclos', group: 'Ciclos e ondulações' });
+          ciclos.push({ id: 'nc_' + e.t.inicio + '_' + e.t.fim, label: 'Nº de ciclos entre ' + e.t.label, sub: percursoLocal(e.t.inicio, tamanhoPiscina) + ' até ' + percursoLocal(e.t.fim, tamanhoPiscina) + ' · ' + ESTILOS[e.t.estilo].nome, unidade: 'ciclos', group: 'Ciclos e ondulações' });
         }
       } else if (e.tipo === 'ond_partida') {
         ciclos.push({ id: 'ond_partida', label: 'Nº ondulações pós-partida', sub: '0-15m · mariposa', unidade: 'ondulações', group: 'Ciclos e ondulações' });
@@ -1520,14 +1512,14 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
   out.parciais25 = null;
   if (prova.distancia === 200 && prova.tamanhoPiscina === 50) {
     var segs = [
-      { label: '0-25m',    tIni: 0,                   tFim: n('tt_25m') },
-      { label: '25-50m',   tIni: n('tt_25m'),          tFim: n('tv_aprox_50') },
-      { label: '50-75m',   tIni: n('tv_aprox_50'),     tFim: n('tt_75m') },
-      { label: '75-100m',  tIni: n('tt_75m'),          tFim: n('tv_aprox_100') },
-      { label: '100-125m', tIni: n('tv_aprox_100'),    tFim: n('tt_125m') },
-      { label: '125-150m', tIni: n('tt_125m'),         tFim: n('tv_aprox_150') },
-      { label: '150-175m', tIni: n('tv_aprox_150'),    tFim: n('tt_175m') },
-      { label: '175-200m', tIni: n('tt_175m'),         tFim: n('tempo_total') },
+      { label: '0-25m',    tIni: 0,                   tFim: n('parc_25m') },
+      { label: '25-50m',   tIni: n('parc_25m'),          tFim: n('tv_aprox_50') },
+      { label: '50-75m',   tIni: n('tv_aprox_50'),     tFim: n('parc_75m') },
+      { label: '75-100m',  tIni: n('parc_75m'),          tFim: n('tv_aprox_100') },
+      { label: '100-125m', tIni: n('tv_aprox_100'),    tFim: n('parc_125m') },
+      { label: '125-150m', tIni: n('parc_125m'),         tFim: n('tv_aprox_150') },
+      { label: '150-175m', tIni: n('tv_aprox_150'),    tFim: n('parc_175m') },
+      { label: '175-200m', tIni: n('parc_175m'),         tFim: n('tempo_total') },
     ];
     out.parciais25 = segs.map(function(s) {
       return { label: s.label, tempo: (s.tIni !== null && s.tFim !== null) ? +(s.tFim - s.tIni).toFixed(2) : null };
@@ -1548,13 +1540,47 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
         velocidade: (dur && dur > 0) ? +(dist / dur).toFixed(2) : null,
       };
     }
-    const t15 = n('aos_15m_s'), t45 = n('tt_p1'), t65 = n('tv_saida_50'), t95 = n('tt_p2');
-    const t115 = n('tv_saida_100'), t145 = n('tt_p3'), t165 = n('tv_saida_150'), t195 = n('tt_p4');
+    // Usar IDs baseados em metros — funcionam para todos os estilos (Livres, Costas, Bruços, Mariposa)
+    // Os troços de nado limpo terminam sempre a 45m, 95m, 145m, 195m (piscina 50m)
+    // As saídas de viragem estão sempre a 65m, 115m, 165m
+    const t15  = n('aos_15m_s');
+    const t45  = n('tt_45m')  !== null ? n('tt_45m')  : n('tt_p1');
+    const t65  = n('tv_saida_50');
+    const t95  = n('tt_95m')  !== null ? n('tt_95m')  : n('tt_p2');
+    const t115 = n('tv_saida_100');
+    const t145 = n('tt_145m') !== null ? n('tt_145m') : n('tt_p3');
+    const t165 = n('tv_saida_150');
+    const t195 = n('tt_195m') !== null ? n('tt_195m') : n('tt_p4');
+    // Ciclos de nado limpo — IDs variam por estilo:
+    // Não-medley: nc_p1, nc_p2, nc_p3, nc_p4
+    // Medley novo: nc_15_25 + nc_25_45 = piscina 1, nc_65_75 + nc_75_95 = piscina 2, etc.
+    // Medley antigo: nc_p1a_perna1 + nc_p1b_perna1, etc.
+    function somarCiclos(idA, idB, idLegado) {
+      var vA = n(idA), vB = n(idB);
+      if (vA !== null && vB !== null) return vA + vB;
+      var leg = n(idLegado);
+      if (leg !== null) return leg;
+      return null;
+    }
+    var nc1, nc2, nc3, nc4;
+    if (prova.isMedley) {
+      function somarPerna(a, b, legA, legB) {
+        var vA = n(a) !== null ? n(a) : n(legA);
+        var vB = n(b) !== null ? n(b) : n(legB);
+        return (vA !== null && vB !== null) ? vA + vB : (vA !== null ? vA : vB);
+      }
+      nc1 = somarPerna('nc_15_25', 'nc_25_45', 'nc_p1a_perna1', 'nc_p1b_perna1');
+      nc2 = somarPerna('nc_65_75', 'nc_75_95', 'nc_p1a_perna2', 'nc_p1b_perna2');
+      nc3 = somarPerna('nc_115_125', 'nc_125_145', 'nc_p1a_perna3', 'nc_p1b_perna3');
+      nc4 = somarPerna('nc_165_175', 'nc_175_195', 'nc_p1a_perna4', 'nc_p1b_perna4');
+    } else {
+      nc1 = n('nc_p1'); nc2 = n('nc_p2'); nc3 = n('nc_p3'); nc4 = n('nc_p4');
+    }
     out.ciclosPorSubTroço = [
-      Object.assign({ label: '15-45m (1ª piscina)' }, calcTroço200(n('nc_p1'), 30, t15, t45)),
-      Object.assign({ label: '65-95m (2ª piscina)' }, calcTroço200(n('nc_p2'), 30, t65, t95)),
-      Object.assign({ label: '115-145m (3ª piscina)' }, calcTroço200(n('nc_p3'), 30, t115, t145)),
-      Object.assign({ label: '165-195m (4ª piscina)' }, calcTroço200(n('nc_p4'), 30, t165, t195)),
+      Object.assign({ label: '15-45m (1ª piscina)' }, calcTroço200(nc1, 30, t15, t45)),
+      Object.assign({ label: '65-95m (2ª piscina)' }, calcTroço200(nc2, 30, t65, t95)),
+      Object.assign({ label: '115-145m (3ª piscina)' }, calcTroço200(nc3, 30, t115, t145)),
+      Object.assign({ label: '165-195m (4ª piscina)' }, calcTroço200(nc4, 30, t165, t195)),
     ];
   }
   const totalBraçadas = out.porBloco50.reduce(function(acc, b) { return (b.bracadas !== null) ? acc + b.bracadas : acc; }, 0);
@@ -3037,6 +3063,49 @@ function iniciarFormulario() {
   nav('marcarVideo');
 }
 
+function regravarDadosAnalise(swimmerId, analiseId) {
+  const sw = getSwimmer(swimmerId);
+  const an = sw && sw.analises.find(function(a) { return a.id === analiseId; });
+  if (!an) return;
+  state.novaAnalise = { estilo: an.estilo, distancia: an.distancia, tamanhoPiscina: an.tamanhoPiscina || 50 };
+  const dados = Object.assign({}, an.dadosBrutos || {});
+
+  // Migrar IDs antigos para os novos (baseados em metros) para 200m piscina 50m
+  if (an.distancia === 200 && (an.tamanhoPiscina || 50) === 50) {
+    var migrarTempos = { 'tt_p1': 'tt_45m', 'tt_p2': 'tt_95m', 'tt_p3': 'tt_145m', 'tt_p4': 'tt_195m' };
+    Object.keys(migrarTempos).forEach(function(antigo) {
+      if (dados[antigo] !== undefined && dados[migrarTempos[antigo]] === undefined) {
+        dados[migrarTempos[antigo]] = dados[antigo];
+        delete dados[antigo];
+      }
+    });
+    // Migrar ciclos antigos de medley (nc_p1a_perna1, etc.) para novos IDs
+    var migrarCiclos = {
+      'nc_p1a_perna1': null, 'nc_p1b_perna1': null,  // perna1: 15-25m e 25-45m → nc_15_45
+      'nc_p1a_perna2': null, 'nc_p1b_perna2': null,  // perna2: 65-75m e 75-95m → nc_65_95
+      'nc_p1a_perna3': null, 'nc_p1b_perna3': null,  // perna3
+      'nc_p1a_perna4': null, 'nc_p1b_perna4': null,  // perna4
+    };
+    // Somar sub-troços para obter ciclos totais de nado limpo por piscina
+    [1,2,3,4].forEach(function(p, i) {
+      var idA = 'nc_p1a_perna' + p, idB = 'nc_p1b_perna' + p;
+      var targets = [['nc_15_45','nc_65_95','nc_115_145','nc_165_195'][i]];
+      var vA = dados[idA] !== undefined ? parseFloat(dados[idA]) : null;
+      var vB = dados[idB] !== undefined ? parseFloat(dados[idB]) : null;
+      if (vA !== null && vB !== null && dados[targets[0]] === undefined) {
+        dados[targets[0]] = String(vA + vB);
+      }
+    });
+  }
+
+  state.formData = dados;
+  state.dataProva = an.dataProva || an.criadoEm.slice(0, 10);
+  state.localProva = an.localProva || '';
+  state.competicao = an.competicao || '';
+  state.editandoAnaliseId = analiseId;
+  nav('marcarVideo', { swimmerId: swimmerId });
+}
+
 function editarAnalise(swimmerId, analiseId) {
   const sw = getSwimmer(swimmerId);
   const an = sw.analises.find(function (a) { return a.id === analiseId; });
@@ -3389,6 +3458,12 @@ function guardarAnalise() {
     if (ultimoTroco && state.formData[ultimoTroco.id]) {
       state.formData['seg_chegada'] = state.formData[ultimoTroco.id];
     }
+  }
+
+  // Para análises de 200m Estilos: remover IDs antigos (tt_p1, tt_p2, tt_p3, tt_p4)
+  // que podem coexistir com os novos (tt_45m, tt_95m, etc.) após regravar
+  if (distancia === 200 && tamanhoPiscina === 50 && estilo === 'ESTILOS') {
+    ['tt_p1','tt_p2','tt_p3','tt_p4'].forEach(function(id) { delete state.formData[id]; });
   }
 
   const metrics = calcularMetricas(estilo, distancia, state.formData, tamanhoPiscina);
@@ -4319,7 +4394,7 @@ function renderRelatorio() {
   const an = sw.analises.find(function (a) { return a.id === state.verAnaliseId; });
   if (!an) return '<div class="empty-state"><p>Análise não encontrada.</p></div>';
   const é50p50 = an.distancia === 50 && (an.tamanhoPiscina || 50) === 50;
-  const é200p50 = an.distancia === 200 && (an.tamanhoPiscina || 50) === 50;
+  const é200p50 = an.distancia === 200 && (an.tamanhoPiscina || 50) === 50 && an.estilo !== 'ESTILOS';
 
   let metrics;
   try {
@@ -4391,7 +4466,8 @@ function renderRelatorio() {
     console.error('renderDadosTecnicos erro:', e);
   }
 
-  html += '<button class="rep-btn rep-btn-ghost" onclick="editarAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Editar dados desta análise</button>';
+  html += '<button class="rep-btn rep-btn-ghost" onclick="editarAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Editar dados da prova</button>';
+  html += '<button class="rep-btn rep-btn-ghost" onclick="regravarDadosAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Regravar dados no vídeo</button>';
   html += '<div style="display:flex;gap:10px;margin-top:10px">' +
     '<button class="rep-btn rep-btn-primary" style="margin-top:0" onclick="confirmarGuardarRelatorio()">Guardar</button>' +
     '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="exportarRelatorio()">Imagem</button>' +
@@ -4604,7 +4680,7 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   labelSerie1 = labelSerie1 || 'Atual';
   labelSerie2 = labelSerie2 || 'Melhor registo';
   const é50p50 = an.distancia === 50 && (an.tamanhoPiscina || 50) === 50;
-  const é200p50 = an.distancia === 200 && (an.tamanhoPiscina || 50) === 50;
+  const é200p50 = an.distancia === 200 && (an.tamanhoPiscina || 50) === 50 && an.estilo !== 'ESTILOS';
   let html = '';
 
   // --- Velocidade, Frequência, Distância/ciclo por troço ---
@@ -4648,7 +4724,8 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   }
 
   // Sub-troços de ciclos para 50m piscina 50m
-  if (m.ciclosPorSubTroço) {
+  // Gráficos de sub-troços — apenas para 50m p50 ou 200m p50, nunca os dois
+  if (é50p50 && m.ciclosPorSubTroço) {
     html += chartCard('chart_ciclos_sub', 'Ciclos por troço', '15-25m · 25-35m · 35-45m · 45-50m');
     html += chartCard('chart_freq_sub', 'Frequência de braçada por troço', 'ciclos/min · 15-25m · 25-35m · 35-45m · 45-50m');
     html += chartCard('chart_dist_ciclo_sub', 'Distância por ciclo por troço', 'm/ciclo · 15-25m · 25-35m · 35-45m');
@@ -4914,7 +4991,7 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
   chartInstances.forEach(function (c) { c.destroy(); });
   chartInstances = [];
   const é50p50 = an.distancia === 50 && (an.tamanhoPiscina || 50) === 50;
-  const é200p50 = an.distancia === 200 && (an.tamanhoPiscina || 50) === 50;
+  const é200p50 = an.distancia === 200 && (an.tamanhoPiscina || 50) === 50 && an.estilo !== 'ESTILOS';
   // O relatório usa sempre uma paleta fixa clara (azul da app + laranja do
   // Swimmin), independente do tema dark/light geral da aplicação — para que
   // o relatório funcione como um "cartão" pronto a exportar/partilhar.
@@ -5036,7 +5113,7 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
   if (é200p50 && m.parciais25) {
     mkLineBar('chart_parc25', m.parciais25.map(function(p){return p.label;}), m.parciais25.map(function(p){return p.tempo;}), (mPB && mPB.parciais25) ? mPB.parciais25.map(function(p){return p.tempo;}) : null, 'line', ' s', {formatador:fmtEixo1});
   }
-  if (m.ciclosPorSubTroço) {
+  if (m.ciclosPorSubTroço && é50p50) {
     const labelsSub = m.ciclosPorSubTroço.map(function(t) { return t.label; });
     const dadosSub = m.ciclosPorSubTroço.map(function(t) { return t.ciclos; });
     const dadosSubPB = (mPB && mPB.ciclosPorSubTroço) ? mPB.ciclosPorSubTroço.map(function(t) { return t.ciclos; }) : null;
