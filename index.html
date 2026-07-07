@@ -4572,7 +4572,7 @@ function renderRelatorio() {
   html += '</div>'; // fim rep-header-photo
   html += '</div></div>'; // fim rep-header-layout + rep-header
 
-  if (temOutras) {
+  if (temOutras && !éPB) {
     html += '<div class="rep-toggle"><div><div class="ct-label">Comparar com melhor registo</div>' +
       '<div class="ct-sub">Sobrepõe o melhor resultado histórico nos gráficos</div></div>' +
       '<label class="switch"><input type="checkbox" ' + (state.compararPB ? 'checked' : '') + ' onchange="toggleComparar(this.checked)"><span class="slider"></span></label></div>';
