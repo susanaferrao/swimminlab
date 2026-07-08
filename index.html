@@ -4825,6 +4825,7 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   labelSerie2 = labelSerie2 || 'Melhor registo';
   const é50p50 = an.distancia === 50 && (an.tamanhoPiscina || 50) === 50;
   const é200p50 = an.distancia === 200 && (an.tamanhoPiscina || 50) === 50 && an.estilo !== 'ESTILOS';
+  const tempoTotalStr = m.tempoTotal ? ' · Total: ' + fmtTempo(m.tempoTotal) : '';
   let html = '';
 
   // --- Velocidade, Frequência, Distância/ciclo por troço ---
@@ -4901,9 +4902,9 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   }
 
   if (!é50p50) {
-    html += chartCard('chart_parc50', 'Parciais a cada 50m', 'tempo de cada parcial (s)');
+    html += chartCard('chart_parc50', 'Parciais a cada 50m', 'tempo de cada parcial' + tempoTotalStr);
     if (m.parciais100.length > 1) {
-      html += chartCard('chart_parc100', 'Parciais a cada 100m', 'tempo de cada parcial (s)');
+      html += chartCard('chart_parc100', 'Parciais a cada 100m', 'tempo de cada parcial' + tempoTotalStr);
     }
   }
 
@@ -5328,11 +5329,21 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
       'bar', ' resp.', { formatador: fmtEixoInt, beginAtZero: true });
   }
 
-  mkLineBar('chart_parc50', m.parciais50.map(function(p){return p.metros+'m';}), m.parciais50.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}),
-    mPB ? mPB.parciais50.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}) : null, 'bar', ' s', { beginAtZero: true });
+  // Subtítulo com tempo total
+  const tempoTotalStr = m.tempoTotal ? ' · Total: ' + fmtTempo(m.tempoTotal) : '';
+  const tempoTotalPBStr = (mPB && mPB.tempoTotal) ? ' · Total: ' + fmtTempo(mPB.tempoTotal) : '';
+
+  mkLineBar('chart_parc50',
+    m.parciais50.map(function(p){return p.metros+'m';}),
+    m.parciais50.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}),
+    mPB ? mPB.parciais50.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}) : null,
+    'bar', '', { beginAtZero: true, formatador: fmtTempo });
   if (m.parciais100.length > 1) {
-    mkLineBar('chart_parc100', m.parciais100.map(function(p){return p.metros+'m';}), m.parciais100.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}),
-      mPB ? mPB.parciais100.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}) : null, 'bar', ' s', { beginAtZero: true });
+    mkLineBar('chart_parc100',
+      m.parciais100.map(function(p){return p.metros+'m';}),
+      m.parciais100.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}),
+      mPB ? mPB.parciais100.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}) : null,
+      'bar', '', { beginAtZero: true, formatador: fmtTempo });
   }
 }
 
