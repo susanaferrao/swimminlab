@@ -5186,16 +5186,44 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
       plugins.datalabels = {
         color: function (ctx) { return ctx.dataset.borderColor || colAccent; },
         anchor: 'end',
-        // Nas barras ambas as séries ficam em 'end' (acima da barra).
-        // Nas linhas, a 1ª série fica em cima do ponto e a 2ª fica em baixo,
-        // evitando que os números se sobreponham quando os valores são próximos.
         align: type === 'line'
-          ? function (ctx) { return ctx.datasetIndex === 0 ? 'top' : 'bottom'; }
+          ? function (ctx) {
+              if (ctx.chart.data.datasets.length < 2) return 'top';
+              var idx = ctx.dataIndex;
+              var v0 = ctx.chart.data.datasets[0].data[idx];
+              var v1 = ctx.chart.data.datasets[1] ? ctx.chart.data.datasets[1].data[idx] : null;
+              if (v0 === null || v0 === undefined || v1 === null || v1 === undefined) {
+                return ctx.datasetIndex === 0 ? 'top' : 'bottom';
+              }
+              // Calcular amplitude do eixo Y para determinar se os valores são próximos
+              var axis = ctx.chart.scales.y;
+              var amplitude = axis ? (axis.max - axis.min) : Math.abs(v0 - v1) * 10;
+              var diff = Math.abs(v0 - v1);
+              var percentagem = amplitude > 0 ? diff / amplitude : 1;
+              if (percentagem < 0.08) {
+                // Valores muito próximos — forçar separação: série 0 acima, série 1 abaixo
+                return ctx.datasetIndex === 0 ? 'top' : 'bottom';
+              }
+              // Valores suficientemente separados — cada label segue o seu ponto
+              return v0 >= v1
+                ? (ctx.datasetIndex === 0 ? 'top' : 'bottom')
+                : (ctx.datasetIndex === 0 ? 'bottom' : 'top');
+            }
           : 'end',
-        offset: type === 'bar' ? 4 : 3,
+        offset: type === 'bar' ? 4 : function(ctx) {
+          if (ctx.chart.data.datasets.length < 2) return 3;
+          var idx = ctx.dataIndex;
+          var v0 = ctx.chart.data.datasets[0].data[idx];
+          var v1 = ctx.chart.data.datasets[1] ? ctx.chart.data.datasets[1].data[idx] : null;
+          if (v0 === null || v1 === null) return 3;
+          var axis = ctx.chart.scales.y;
+          var amplitude = axis ? (axis.max - axis.min) : 1;
+          var diff = Math.abs(v0 - v1);
+          // Quanto mais próximos, maior o offset para afastar os labels
+          return diff / amplitude < 0.08 ? 6 : 3;
+        },
         font: { size: 11, weight: '800' },
         formatter: function (v) { return v === null || v === undefined ? '' : formatador(v) + (unidade || ''); },
-        // Impede que os valores sejam cortados na margem superior ou inferior.
         clamp: true,
       };
     }
