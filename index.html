@@ -4825,7 +4825,8 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   labelSerie2 = labelSerie2 || 'Melhor registo';
   const é50p50 = an.distancia === 50 && (an.tamanhoPiscina || 50) === 50;
   const é200p50 = an.distancia === 200 && (an.tamanhoPiscina || 50) === 50 && an.estilo !== 'ESTILOS';
-  const tempoTotalStr = m.tempoTotal ? ' · Total: ' + fmtTempo(m.tempoTotal) : '';
+  const tempoTotalStr = m.tempoTotal ? " · Total: " + fmtTempo(m.tempoTotal) : "";
+  const tempoTotalPBStr = (mPB && mPB.tempoTotal) ? fmtTempo(mPB.tempoTotal) : "";
   let html = '';
 
   // --- Velocidade, Frequência, Distância/ciclo por troço ---
@@ -4902,9 +4903,9 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   }
 
   if (!é50p50) {
-    html += chartCard('chart_parc50', 'Parciais a cada 50m', 'tempo de cada parcial' + tempoTotalStr);
+    html += chartCard('chart_parc50', 'Parciais a cada 50m', 'tempo de cada parcial' + tempoTotalStr + (mPB && tempoTotalPBStr ? ' vs ' + tempoTotalPBStr : ''));
     if (m.parciais100.length > 1) {
-      html += chartCard('chart_parc100', 'Parciais a cada 100m', 'tempo de cada parcial' + tempoTotalStr);
+      html += chartCard('chart_parc100', 'Parciais a cada 100m', 'tempo de cada parcial' + tempoTotalStr + (mPB && tempoTotalPBStr ? ' vs ' + tempoTotalPBStr : ''));
     }
   }
 
