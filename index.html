@@ -933,14 +933,74 @@ const STORAGE_KEY = 'swimlab_data_v1';
 function loadDB() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { swimmers: [], equipas: [] };
+    if (!raw) return { swimmers: [], equipas: [], referencias: [] };
     const db = JSON.parse(raw);
     if (!db.equipas) db.equipas = [];
+    if (!db.referencias) db.referencias = [];
+    // Inserir recorde da Summer McIntosh se ainda não existir
+    if (!db.referencias.find(function(r) { return r.id === 'rm_mariposa_200_p50'; })) {
+      db.referencias.push({
+        id: 'rm_mariposa_200_p50',
+        titulo: 'RM — Summer McIntosh',
+        estilo: 'MARIPOSA', distancia: 200, tamanhoPiscina: 50,
+        data: '2026-07-05',
+        tempoTotal: 121.65, // 2:01.65
+        notas: 'Recorde do Mundo — Summer McIntosh — 05/07/2026',
+        dados: {
+          takeoff_pe_anterior_s: '0.74',
+          aos_15m_s: '6.67',
+          // Splits acumulados: 50m=27.45, 100m=58.21, 150m=89.73, 200m=121.65
+          // Fim troço nado limpo estimado a ~45m, 95m, 145m, 195m
+          tt_p1: '24.71',        // ≈ 27.45 × 45/50
+          tv_aprox_50: '27.45',
+          tv_saida_50: '39.51',  // 27.45 + 12.06
+          tt_p2: '55.30',        // 39.51 + (58.21-39.51) × 30/26 ≈
+          tv_aprox_100: '58.21',
+          tv_saida_100: '70.32', // 58.21 + 12.11
+          tt_p3: '85.76',        // 70.32 + (89.73-70.32) × 30/26 ≈
+          tv_aprox_150: '89.73',
+          tv_saida_150: '102.08',// 89.73 + 12.35
+          tt_p4: '118.47',       // 121.65 - 3.18 (finish 5m)
+          tempo_total: '121.65',
+          // Ciclos (Mariposa: braçadas = ciclos pois é bilateral)
+          ciclos_b50:  '21',
+          ciclos_b100: '24',
+          ciclos_b150: '24',
+          ciclos_b200: '25',
+          // Ondulações
+          ond_partida:     '7',
+          ond_viragem_50:  '4',
+          ond_viragem_100: '4',
+          ond_viragem_150: '4',
+        }
+      });
+      saveDB(db);
+    }
     return db;
   } catch (e) {
-    return { swimmers: [], equipas: [] };
+    return { swimmers: [], equipas: [], referencias: [] };
   }
 }
+// ---- REFERÊNCIAS (recordes, benchmarks) ----
+function getReferencias() { return loadDB().referencias || []; }
+function getReferencia(id) { return getReferencias().find(function(r){ return r.id === id; }); }
+function getReferenciaParaProva(estilo, distancia, tamanhoPiscina) {
+  return getReferencias().find(function(r) {
+    return r.estilo === estilo && r.distancia === distancia && r.tamanhoPiscina === tamanhoPiscina;
+  });
+}
+function saveReferencia(ref) {
+  const db = loadDB();
+  const idx = db.referencias.findIndex(function(r){ return r.id === ref.id; });
+  if (idx !== -1) db.referencias[idx] = ref; else db.referencias.push(ref);
+  saveDB(db);
+}
+function deleteReferencia(id) {
+  const db = loadDB();
+  db.referencias = db.referencias.filter(function(r){ return r.id !== id; });
+  saveDB(db);
+}
+
 function saveDB(db) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
@@ -2058,6 +2118,7 @@ const state = {
   },
   verAnaliseId: null,
   compararPB: false,
+  compararRef: false,
   editandoAnaliseId: null, // se definido, guardarAnalise atualiza esta análise em vez de criar uma nova
   video: {
     objectUrl: null,
@@ -4578,10 +4639,21 @@ function renderRelatorio() {
       '<label class="switch"><input type="checkbox" ' + (state.compararPB ? 'checked' : '') + ' onchange="toggleComparar(this.checked)"><span class="slider"></span></label></div>';
   }
 
+  // Toggle comparação com referência (recorde, benchmark)
+  const refProva = getReferenciaParaProva(an.estilo, an.distancia, an.tamanhoPiscina || 50);
+  if (refProva) {
+    html += '<div class="rep-toggle"><div><div class="ct-label">Comparar com ' + escapeHtml(refProva.titulo) + '</div>' +
+      '<div class="ct-sub">' + fmtTempo(refProva.tempoTotal) + (refProva.notas ? ' · ' + escapeHtml(refProva.notas) : '') + '</div></div>' +
+      '<label class="switch"><input type="checkbox" ' + (state.compararRef ? 'checked' : '') + ' onchange="toggleCompararRef(this.checked)"><span class="slider"></span></label></div>';
+  }
+
   const metricsPB = (state.compararPB && melhor) ? calcularMetricas(melhor.estilo, melhor.distancia, melhor.dadosBrutos, melhor.tamanhoPiscina) : null;
+  const metricsRef = (state.compararRef && refProva) ? calcularMetricas(refProva.estilo, refProva.distancia, refProva.dados, refProva.tamanhoPiscina) : null;
+  const metricsComp = metricsRef || metricsPB;
+  const labelComp = metricsRef ? refProva.titulo : 'Melhor registo';
 
   try {
-    html += '<div id="chartsContainer">' + renderGraficos(an, metrics, metricsPB) + '</div>';
+    html += '<div id="chartsContainer">' + renderGraficos(an, metrics, metricsComp, sw.nome, labelComp) + '</div>';
   } catch(e) {
     html += '<div id="chartsContainer"><div class="empty-state"><p>Erro nos gráficos: ' + escapeHtml(String(e.message)) + '</p></div></div>';
     console.error('renderGraficos erro:', e);
@@ -4717,9 +4789,14 @@ function confirmarGuardarRelatorio() {
 
 function toggleComparar(checked) {
   state.compararPB = checked;
+  if (checked) state.compararRef = false;
   render();
 }
-
+function toggleCompararRef(checked) {
+  state.compararRef = checked;
+  if (checked) state.compararPB = false;
+  render();
+}
 function apagarAnaliseAtual() {
   showConfirm('Apagar análise', 'Apagar esta análise permanentemente?', function () {
     deleteAnalise(state.swimmerId, state.verAnaliseId);
@@ -5111,7 +5188,11 @@ function afterRenderRelatorio() {
   const m = calcularMetricas(an.estilo, an.distancia, an.dadosBrutos, an.tamanhoPiscina);
   const melhor = getMelhorAnalise(sw, an.estilo, an.distancia, an.id, an.tamanhoPiscina);
   const mPB = (state.compararPB && melhor) ? calcularMetricas(melhor.estilo, melhor.distancia, melhor.dadosBrutos, melhor.tamanhoPiscina) : null;
-  desenharGraficosComLabels(an, m, mPB, 'Atual', 'Melhor registo');
+  const refProva = getReferenciaParaProva(an.estilo, an.distancia, an.tamanhoPiscina || 50);
+  const mRef = (state.compararRef && refProva) ? calcularMetricas(refProva.estilo, refProva.distancia, refProva.dados, refProva.tamanhoPiscina) : null;
+  const mComp = mRef || mPB;
+  const labelComp = mRef ? refProva.titulo : 'Melhor registo';
+  desenharGraficosComLabels(an, m, mComp, sw.nome, labelComp);
 }
 
 // Desenha todos os gráficos do relatório (cards já criados por renderGraficos)
@@ -5343,7 +5424,14 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
 
   if (m.ondulacoes.length) {
     // Alinhar pelos labels de ambas as séries (podem ter segmentos diferentes)
-    const labelsOnd = unirLabels(m.ondulacoes, mPB ? mPB.ondulacoes : null);
+    const labelsOnd = unirLabels(m.ondulacoes, mPB ? mPB.ondulacoes : null).sort(function(a, b) {
+      // Partida sempre primeiro, depois viragens por metros crescente
+      if (a.startsWith('Pós-partida')) return -1;
+      if (b.startsWith('Pós-partida')) return 1;
+      var mA = parseInt(a.match(/\d+/)) || 0;
+      var mB = parseInt(b.match(/\d+/)) || 0;
+      return mA - mB;
+    });
     mkLineBar('chart_ond', labelsOnd,
       labelsOnd.map(function(l){ const e = m.ondulacoes.find(function(o){return o.label===l;}); return e ? e.valor : null; }),
       mPB ? labelsOnd.map(function(l){ const e = mPB.ondulacoes.find(function(o){return o.label===l;}); return e ? e.valor : null; }) : null,
