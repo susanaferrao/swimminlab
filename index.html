@@ -664,12 +664,6 @@ html:not(.light-mode) input[type="date"] { color-scheme: dark; }
   </button>
 </div>
 
-  <div style="font-size:15px;color:var(--txt3)">Entra para aceder às tuas análises</div>
-  <button onclick="fbLogin()" style="display:flex;align-items:center;gap:10px;padding:14px 24px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--txt);font-size:15px;font-weight:600;cursor:pointer">
-    <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-    Entrar com Google
-  </button>
-</div>
 <div class="container" id="app"></div>
 <div class="toast" id="toast"></div>
 <div id="modalRoot"></div>
@@ -2366,7 +2360,7 @@ function renderListaNadadores() {
     const n = getNadadoresDaEquipa(e.id).length;
     html += '<div class="swimmer-item" onclick="nav(\'equipa\',{equipaId:\'' + e.id + '\'})">' +
       '<div class="swimmer-avatar" style="border-radius:10px;background:var(--bg3);border:1px solid var(--border)">' +
-      (e.logo ? '<img src="' + e.logo + '" style="width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box">' : '<span style="font-size:16px;font-weight:800">' + escapeHtml((e.nome[0]||'').toUpperCase()) + '</span>') +
+      ('<span style="font-size:16px;font-weight:800">' + escapeHtml((e.nome[0]||'').toUpperCase()) + '</span>') +
       '</div>' +
       '<div class="swimmer-info"><div class="name">' + escapeHtml(e.nome) + '</div>' +
       '<div class="meta">' + (e.escalao ? escapeHtml(e.escalao) + ' · ' : '') + n + ' nadador' + (n===1?'':'es') + '</div></div>' +
@@ -2541,7 +2535,7 @@ function renderEquipa() {
   const nadadores = getNadadoresDaEquipa(e.id);
   let html = '<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:16px">' +
     '<div class="swimmer-avatar" style="border-radius:10px;background:var(--bg3);border:1px solid var(--border);flex-shrink:0">' +
-    (e.logo ? '<img src="' + e.logo + '" style="width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box">' : '<span style="font-size:16px;font-weight:800">' + escapeHtml((e.nome[0]||'').toUpperCase()) + '</span>') +
+    ('<span style="font-size:16px;font-weight:800">' + escapeHtml((e.nome[0]||'').toUpperCase()) + '</span>') +
     '</div>' +
     '<div style="flex:1"><div style="font-size:17px;font-weight:700">' + escapeHtml(e.nome) + '</div>' +
     (e.escalao ? '<div style="font-size:13px;color:var(--txt3)">' + escapeHtml(e.escalao) + '</div>' : '') + '</div>' +
@@ -2562,19 +2556,13 @@ function renderEquipa() {
 }
 
 function mostrarModalEquipa(equipaExistente) {
-  let logoNovo = null;
-  const logoActual = equipaExistente ? equipaExistente.logo : null;
   const root = document.getElementById('modalRoot');
   root.innerHTML =
     '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' +
     '<div class="modal-box">' +
     '<div class="modal-title">' + (equipaExistente ? 'Editar equipa' : 'Nova equipa') + '</div>' +
     '<div style="text-align:center;margin-bottom:14px">' +
-    '<div id="eqLogoPreview" onclick="document.getElementById(\'eqLogoInput\').click()" style="width:64px;height:64px;border-radius:12px;background:var(--bg3);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;cursor:pointer;overflow:hidden;font-size:22px;font-weight:800">' +
-    (logoActual ? '<img src="' + logoActual + '" style="width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box">' : '+') +
-    '</div><div style="font-size:11px;color:var(--txt3)">Logo (opcional)</div>' +
-    '<input type="file" id="eqLogoInput" accept="image/*" style="display:none"></div>' +
-    '<label class="field-label">Nome da equipa</label>' +
+        '<label class="field-label">Nome da equipa</label>' +
     '<input type="text" id="eqNome" value="' + (equipaExistente ? escapeHtml(equipaExistente.nome) : '') + '" placeholder="ex: Sport Lisboa e Benfica" style="width:100%;box-sizing:border-box">' +
     '<label class="field-label" style="margin-top:12px">Escalão (opcional)</label>' +
     '<input type="text" id="eqEscalao" value="' + (equipaExistente ? escapeHtml(equipaExistente.escalao||'') : '') + '" placeholder="ex: Juvenis" style="width:100%;box-sizing:border-box">' +
@@ -2584,22 +2572,12 @@ function mostrarModalEquipa(equipaExistente) {
     (equipaExistente ? '<button class="btn btn-ghost" style="margin-top:8px;color:#f29999;border-color:rgba(239,68,68,0.3)" onclick="confirmarApagarEquipa(\'' + equipaExistente.id + '\')">Apagar equipa</button>' : '') +
     '</div></div>';
 
-  document.getElementById('eqLogoInput').onchange = function() {
-    const file = this.files && this.files[0]; if (!file) return;
-    const r = new FileReader();
-    r.onload = function(ev) {
-      logoNovo = ev.target.result;
-      document.getElementById('eqLogoPreview').innerHTML = '<img src="' + logoNovo + '" style="width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box">';
-    };
-    r.readAsDataURL(file);
-  };
   document.getElementById('eqGuardar').onclick = function() {
     const nome = document.getElementById('eqNome').value.trim();
     if (!nome) { document.getElementById('eqNome').focus(); return; }
     const escalao = document.getElementById('eqEscalao').value.trim();
-    const logo = logoNovo || logoActual;
-    if (equipaExistente) { updateEquipa(equipaExistente.id, { nome: nome, escalao: escalao||null, logo: logo||null }); closeModal(); nav('equipa', { equipaId: equipaExistente.id }); }
-    else { const eq = createEquipa(nome, escalao, logo); closeModal(); nav('equipa', { equipaId: eq.id }); }
+    if (equipaExistente) { updateEquipa(equipaExistente.id, { nome: nome, escalao: escalao||null, logo: null }); closeModal(); nav('equipa', { equipaId: equipaExistente.id }); }
+    else { const eq = createEquipa(nome, escalao, null); closeModal(); nav('equipa', { equipaId: eq.id }); }
   };
   setTimeout(function(){ const el = document.getElementById('eqNome'); if(el) el.focus(); }, 50);
 }
@@ -2763,10 +2741,7 @@ function renderPerfil() {
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">' +
     '<div style="display:flex;align-items:center;gap:14px">' +
     '<div style="text-align:center">' +
-    '<div class="perfil-avatar" onclick="abrirUploadFoto(\'' + sw.id + '\')">' +
-    (sw.foto ? '<img src="' + sw.foto + '">' : iniciais(sw.nome)) +
-    '</div>' +
-    '<div class="perfil-avatar-hint">Alterar foto</div>' +
+    '<div class="perfil-avatar">' + iniciais(sw.nome) + '</div>' +
     '</div>' +
     '<div><div class="card-title" style="margin-bottom:4px">Perfil</div>' +
     (infoLinha.length ? '<div style="font-size:13px;color:var(--txt2)">' + infoLinha.join(' · ') + '</div>' : '<div style="font-size:13px;color:var(--txt3)">Sexo e data de nascimento não definidos</div>') +
@@ -2790,7 +2765,7 @@ function renderPerfil() {
       const membro = equipasDoNadador.indexOf(e.id) !== -1;
       html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">' +
         '<div class="swimmer-avatar" style="width:32px;height:32px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);font-size:12px;flex-shrink:0">' +
-        (e.logo ? '<img src="' + e.logo + '" style="width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box">' : escapeHtml((e.nome[0]||'').toUpperCase())) +
+        escapeHtml((e.nome[0]||'').toUpperCase()) +
         '</div>' +
         '<div style="flex:1;font-size:14px;font-weight:600">' + escapeHtml(e.nome) + (e.escalao ? ' <span style="font-size:11px;color:var(--txt3)">' + escapeHtml(e.escalao) + '</span>' : '') + '</div>' +
         '<button class="btn btn-ghost btn-sm" onclick="toggleEquipaNadador(\'' + sw.id + '\',\'' + e.id + '\')" style="' + (membro ? 'color:var(--accent)' : '') + '">' + (membro ? 'Remover' : 'Adicionar') + '</button>' +
@@ -3029,9 +3004,6 @@ function cancelarCropFoto() {
 function avatarHtml(sw, tamanho, extra) {
   tamanho = tamanho || 44;
   extra = extra || '';
-  if (sw && sw.foto) {
-    return '<img src="' + sw.foto + '" style="width:' + tamanho + 'px;height:' + tamanho + 'px;border-radius:50%;object-fit:cover;flex-shrink:0;' + extra + '">';
-  }
   return '<div class="swimmer-avatar" style="width:' + tamanho + 'px;height:' + tamanho + 'px;font-size:' + Math.round(tamanho * 0.36) + 'px;' + extra + '">' + iniciais(sw ? sw.nome : '?') + '</div>';
 }
 
@@ -4848,14 +4820,7 @@ function renderRelatorio() {
     html += éPB ? '<div class="rep-pb">Melhor registo nesta prova</div>' : '<div class="rep-sub" style="margin-top:6px">Melhor registo: ' + fmtTempo(melhor.tempoTotal) + '</div>';
   }
   html += '</div>'; // fim rep-header-content
-  // Foto à direita — grande e sem círculo, como no mockup
-  html += '<div class="rep-header-photo">';
-  if (sw.foto) {
-    html += '<img src="' + sw.foto + '" class="rep-header-photo-img">';
-  } else {
-    html += '<div class="rep-header-photo-initials">' + iniciais(sw.nome) + '</div>';
-  }
-  html += '</div>'; // fim rep-header-photo
+  html += '<div class="rep-header-photo"><div class="rep-header-photo-initials">' + iniciais(sw.nome) + '</div></div>';
   html += '</div></div>'; // fim rep-header-layout + rep-header
 
   if (temOutras && !éPB) {
