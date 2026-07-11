@@ -2388,6 +2388,7 @@ function renderListaNadadores() {
     html += '<button class="btn btn-primary" style="margin-bottom:10px;width:100%" onclick="nav(\'compararSelecao\')">Comparar análises</button>';
   }
   html += '<button class="btn btn-ghost" style="margin-bottom:10px;width:100%" onclick="nav(\'referencias\')">Referências</button>';
+  html += '<button class="btn btn-ghost" style="margin-bottom:10px;width:100%;font-size:12px;color:var(--txt3)" onclick="mostrarGestaoArmazenamento()">⚙ Armazenamento</button>';
   soltos.slice().sort(function(a,b){return a.nome.localeCompare(b.nome);}).forEach(function(s) {
     html += '<div class="swimmer-item" onclick="nav(\'perfil\',{swimmerId:\'' + s.id + '\'})">' +
       avatarHtml(s, 44) +
@@ -2613,6 +2614,120 @@ function confirmarApagarEquipa(id) {
   showConfirm('Apagar equipa', 'Apagar esta equipa? Os nadadores não são apagados.', function() {
     deleteEquipa(id); closeModal(); nav('lista');
   });
+}
+
+function comprimirTodasFotos() {
+  const db = loadDB();
+  let comprimidas = 0;
+  let libertoKB = 0;
+
+  function comprimirImagem(dataUrl, callback) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      // Reduzir para max 200px
+      const maxDim = 200;
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      callback(canvas.toDataURL('image/jpeg', 0.5));
+    };
+    img.src = dataUrl;
+  }
+
+  const tarefas = [];
+  db.swimmers.forEach(function(s) {
+    if (s.foto && s.foto.length > 10000) {
+      tarefas.push(function(done) {
+        const antes = s.foto.length;
+        comprimirImagem(s.foto, function(novaFoto) {
+          libertoKB += Math.round((antes - novaFoto.length) / 1024);
+          s.foto = novaFoto;
+          comprimidas++;
+          done();
+        });
+      });
+    }
+  });
+  db.equipas.forEach(function(e) {
+    if (e.logo && e.logo.length > 10000) {
+      tarefas.push(function(done) {
+        const antes = e.logo.length;
+        comprimirImagem(e.logo, function(novaLogo) {
+          libertoKB += Math.round((antes - novaLogo.length) / 1024);
+          e.logo = novaLogo;
+          comprimidas++;
+          done();
+        });
+      });
+    }
+  });
+
+  if (!tarefas.length) { toast('Não há imagens para comprimir.'); return; }
+
+  // Executar em série
+  var i = 0;
+  function next() {
+    if (i >= tarefas.length) {
+      saveDB(db);
+      closeModal();
+      toast('Comprimidas ' + comprimidas + ' imagens — libertados ~' + libertoKB + ' KB');
+      render();
+      return;
+    }
+    tarefas[i++](next);
+  }
+  toast('A comprimir imagens...');
+  next();
+}
+
+function mostrarGestaoArmazenamento() {
+  // Calcular uso actual
+  var total = 0;
+  try {
+    for (var k in localStorage) {
+      if (localStorage.hasOwnProperty(k)) total += (localStorage[k].length * 2);
+    }
+  } catch(e) {}
+  var totalKB = Math.round(total / 1024);
+  var totalMB = (total / 1024 / 1024).toFixed(1);
+  var percentagem = Math.min(100, Math.round(total / (5 * 1024 * 1024) * 100));
+
+  // Calcular quanto são fotos
+  var fotoBytes = 0;
+  try {
+    var db = loadDB();
+    db.swimmers.forEach(function(s) { if (s.foto) fotoBytes += s.foto.length * 2; });
+    db.equipas.forEach(function(e) { if (e.logo) fotoBytes += e.logo.length * 2; });
+  } catch(e) {}
+  var fotoKB = Math.round(fotoBytes / 1024);
+
+  var cor = percentagem < 60 ? 'var(--green2)' : percentagem < 80 ? '#facc15' : '#f29999';
+
+  var root = document.getElementById('modalRoot');
+  root.innerHTML =
+    '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' +
+    '<div class="modal-box">' +
+    '<div class="modal-title">Armazenamento</div>' +
+    '<div style="margin:12px 0">' +
+    '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">' +
+    '<span style="color:var(--txt3)">Usado</span>' +
+    '<span style="font-weight:700;color:' + cor + '">' + totalMB + ' MB / ~5 MB (' + percentagem + '%)</span>' +
+    '</div>' +
+    '<div style="background:var(--bg3);border-radius:6px;height:8px;overflow:hidden">' +
+    '<div style="background:' + cor + ';height:100%;width:' + percentagem + '%"></div>' +
+    '</div>' +
+    '</div>' +
+    '<div style="font-size:13px;color:var(--txt3);margin-bottom:16px">Fotos e logos: ~' + fotoKB + ' KB</div>' +
+    '<button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="comprimirTodasFotos()">Comprimir imagens</button>' +
+    '<div style="font-size:11px;color:var(--txt3);margin-bottom:12px">Reduz fotos e logos para max 200px · JPEG 50% — liberta espaço sem apagar dados</div>' +
+    '<button class="btn btn-ghost" style="width:100%" onclick="closeModal()">Fechar</button>' +
+    '</div></div>';
 }
 
 function abrirNovoNadador() {
