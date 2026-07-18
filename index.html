@@ -1655,17 +1655,10 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
         }
         if (distNadoReal !== null) distPorCiclo = distNadoReal / nCiclos;
 
-        // Frequência: ciclos / duração total do percurso de nado
-        var duracaoFreq = null;
-        if (t.campoBreakoutTempoAlt && t.apósViragemEm !== undefined) {
-          var tSaidaAnterior = n('tv_saida_' + t.apósViragemEm);
-          var tToque = viragemFim ? n('tv_aprox_' + viragemFim.emMetros) : (n('tv_aprox_' + t.fimParede) || n('seg_chegada') || n('tempo_total'));
-          if (tSaidaAnterior !== null && tToque !== null) duracaoFreq = tToque - tSaidaAnterior;
-        } else {
-          duracaoFreq = duracao;
-        }
-        if (duracaoFreq && duracaoFreq > 0) {
-          freq = (nCiclos / duracaoFreq) * 60;
+        // Frequência: ciclos nado limpo / duração nado limpo × 60
+        // Usa a mesma duração que a velocidade — zona do breakout até -5m
+        if (duracao && duracao > 0) {
+          freq = (nCiclos / duracao) * 60;
           if (freq > 120) freq = null;
         }
       }
@@ -2317,6 +2310,7 @@ const state = {
   compararPB: false,
   compararRef: false,
   editandoAnaliseId: null, // se definido, guardarAnalise atualiza esta análise em vez de criar uma nova
+  editandoSemVideo: false, // modo de edição sem vídeo — mostra campos autoCapturados
   video: {
     objectUrl: null,
     tempoPartidaAbsoluto: null, // tempo do vídeo (video.currentTime) correspondente ao frame da partida
@@ -3493,7 +3487,7 @@ function iniciarFormulario() {
   state.formStep = 'data';
   state.dataProva = new Date().toISOString().slice(0, 10);
   state.localProva = '';
-  state.editandoAnaliseId = null;
+  state.editandoAnaliseId = null; state.editandoSemVideo = false;
   nav('marcarVideo');
 }
 
@@ -3522,6 +3516,7 @@ function regravarDadosSemVideo(swimmerId, analiseId) {
   state.competicao = an.competicao || '';
   state.editandoAnaliseId = analiseId;
   state.formStep = 'tempos';
+  state.editandoSemVideo = true;
   nav('formulario', { swimmerId: swimmerId });
 }
 
@@ -3631,10 +3626,12 @@ function renderFormulario() {
   }
 
   const campos = gerarCamposInput(state.novaAnalise.estilo, state.novaAnalise.distancia, state.novaAnalise.tamanhoPiscina, state.incluirOndulacoes, state.incluirRespiracoes);
-  // No formulário manual, campos autoCapturado (distâncias medidas pelo vídeo)
-  // não aparecem — são preenchidos automaticamente pela calibração de distância.
-  // No ecrã de marcação de vídeo (listaPontosParaMarcar) aparecem todos.
-  const listaTempos = campos.tempos.filter(function(c) { return !c.autoCapturado; });
+  const listaTempos = campos.tempos.filter(function(c) {
+    // No modo "sem vídeo" mostrar todos os campos incluindo os autoCapturados
+    if (state.editandoSemVideo) return !c.isHeader;
+    // No formulário manual normal, campos autoCapturado não aparecem
+    return !c.autoCapturado;
+  });
   const lista = state.formStep === 'tempos' ? listaTempos : campos.ciclos;
 
   // Tabs de navegação — clicáveis em qualquer direção, com flush automático
@@ -3978,7 +3975,7 @@ function finalizarGuardarAnalise(estilo, distancia, metrics) {
     analise = addAnalise(state.swimmerId, dados);
     toast('Análise guardada');
   }
-  state.editandoAnaliseId = null;
+  state.editandoAnaliseId = null; state.editandoSemVideo = false;
   state.formDataProva = null;
   nav('relatorio', { swimmerId: state.swimmerId, verAnaliseId: analise.id, compararPB: false });
 }
