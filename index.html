@@ -668,6 +668,27 @@ html:not(.light-mode) input[type="date"] { color-scheme: dark; }
 <div class="toast" id="toast"></div>
 <div id="modalRoot"></div>
 
+<!-- Toolbar de anotação de vídeo — fixed, sempre no DOM -->
+<div id="anotacaoToolbar" style="display:none;position:fixed;right:12px;top:50%;transform:translateY(-50%);z-index:200;flex-direction:column;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 6px;width:44px;box-shadow:0 4px 20px rgba(0,0,0,0.4)">
+  <button id="toolReta" onclick="selTool('reta')" title="Reta" style="width:32px;height:32px;border-radius:7px;border:1.5px solid var(--accent);background:var(--accent);color:#04141f;font-size:15px;font-weight:900;cursor:pointer">—</button>
+  <button id="toolLapis" onclick="selTool('lapis')" title="Lápis" style="width:32px;height:32px;border-radius:7px;border:1.5px solid var(--border);background:transparent;color:var(--txt);font-size:15px;cursor:pointer">✏</button>
+  <div style="width:28px;height:1px;background:var(--border)"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+    <div onclick="selCor('#ffffff')" id="cor_ffffff" style="width:18px;height:18px;border-radius:50%;background:#ffffff;cursor:pointer;border:2px solid #aaa"></div>
+    <div onclick="selCor('#000000')" id="cor_000000" style="width:18px;height:18px;border-radius:50%;background:#000000;cursor:pointer;border:2px solid transparent"></div>
+    <div onclick="selCor('#ff3b3b')" id="cor_ff3b3b" style="width:18px;height:18px;border-radius:50%;background:#ff3b3b;cursor:pointer;border:2px solid transparent"></div>
+    <div onclick="selCor('#2E6DA4')" id="cor_2E6DA4" style="width:18px;height:18px;border-radius:50%;background:#2E6DA4;cursor:pointer;border:2px solid transparent"></div>
+    <div onclick="selCor('#22c55e')" id="cor_22c55e" style="width:18px;height:18px;border-radius:50%;background:#22c55e;cursor:pointer;border:2px solid transparent"></div>
+    <div onclick="selCor('#facc15')" id="cor_facc15" style="width:18px;height:18px;border-radius:50%;background:#facc15;cursor:pointer;border:2px solid transparent"></div>
+    <div onclick="selCor('#f97316')" id="cor_f97316" style="width:18px;height:18px;border-radius:50%;background:#f97316;cursor:pointer;border:2px solid transparent"></div>
+    <div onclick="selCor('#f472b6')" id="cor_f472b6" style="width:18px;height:18px;border-radius:50%;background:#f472b6;cursor:pointer;border:2px solid transparent"></div>
+  </div>
+  <div style="width:28px;height:1px;background:var(--border)"></div>
+  <input type="range" id="espessura" min="1" max="12" value="2" style="height:56px;writing-mode:vertical-lr;direction:rtl;cursor:pointer;width:20px" oninput="anotacaoEspessura=parseInt(this.value)" title="Espessura">
+  <div style="width:28px;height:1px;background:var(--border)"></div>
+  <button onclick="apagarAnotacoes()" title="Apagar" style="width:32px;height:32px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--txt3);font-size:14px;cursor:pointer">🗑</button>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -739,7 +760,10 @@ function gerarTroçosPiscinaLimpa(distanciaTotal, tamanhoPiscina, offset) {
       troços.push({
         id: 'p' + (i + 1), baseadoNoBreakout: true,
         campoBreakoutDist: 'saida_dist_' + (viragemEm + offset),
-        campoBreakoutTempo: 'tb_saida_' + (viragemEm + offset), // tempo real do breakout, não fim da saída
+        // tv_saida_X = tempo aos 15m após viragem = início do nado limpo p25
+        // tb_saida_X (tempo real do breakout) como fallback se existir
+        campoBreakoutTempo: 'tv_saida_' + (viragemEm + offset),
+        campoBreakoutTempoAlt: 'tb_saida_' + (viragemEm + offset),
         fimParede: viragemEm + 25 + offset, label: (viragemEm + offset) + '-' + (viragemEm + 25 + offset) + 'm',
         apósViragemEm: viragemEm + offset,
       });
@@ -1375,11 +1399,19 @@ function gerarCamposInput(estilo, distancia, tamanhoPiscina, incluirOndulacoes, 
         // Para distâncias longas (≥400m) os ciclos totais por bloco são
         // substituídos pelos ciclos de nado limpo (15-45m) — mais precisos e práticos.
         if (distancia < 400) {
-          ciclos.push({ id: 'ciclos_' + e.b.id, label: 'Ciclos entre ' + e.b.inicio + '-' + e.b.fim + 'm', unidade: 'ciclos', group: 'Ciclos e ondulações' });
-          if (distancia === 50 && tamanhoPiscina === 50 && e.b.inicio === 0 && e.b.fim === 50) {
-            [[15,25],[25,35],[35,45],[45,50]].forEach(function(t) {
-              ciclos.push({ id: 'nc_' + t[0] + '_' + t[1], label: 'Ciclos ' + t[0] + '-' + t[1] + 'm', unidade: 'ciclos', group: 'Ciclos e ondulações' });
-            });
+          if (tamanhoPiscina === 25) {
+            var percursoLabel = e.b.inicio + '-' + e.b.fim + 'm';
+            // Ciclos totais do percurso (viragem a viragem) — para gráficos de braçadas
+            ciclos.push({ id: 'ciclos_' + e.b.id, label: 'Ciclos entre ' + percursoLabel, unidade: 'ciclos', group: 'Ciclos e ondulações' });
+            // Ciclos de nado limpo (breakout → -5m) — para distância/ciclo e frequência
+            ciclos.push({ id: 'nc_nl_' + e.b.fim, label: 'Ciclos nado limpo ' + percursoLabel, sub: 'do breakout até -5m da parede', unidade: 'ciclos', group: 'Ciclos e ondulações' });
+          } else {
+            ciclos.push({ id: 'ciclos_' + e.b.id, label: 'Ciclos entre ' + e.b.inicio + '-' + e.b.fim + 'm', unidade: 'ciclos', group: 'Ciclos e ondulações' });
+            if (distancia === 50 && tamanhoPiscina === 50 && e.b.inicio === 0 && e.b.fim === 50) {
+              [[15,25],[25,35],[35,45],[45,50]].forEach(function(t) {
+                ciclos.push({ id: 'nc_' + t[0] + '_' + t[1], label: 'Ciclos ' + t[0] + '-' + t[1] + 'm', unidade: 'ciclos', group: 'Ciclos e ondulações' });
+              });
+            }
           }
         }
       } else if (e.tipo === 'troço') {
@@ -1534,7 +1566,7 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
     partida: {},
   };
 
-  function n(id) { const v = dados[id]; return (v === undefined || v === '' || v === null || v === '') ? null : parseFloat(v); }
+  function n(id) { const v = dados[id]; return (v === undefined || v === '' || v === null) ? null : parseFloat(String(v).replace(',', '.')); }
 
   // tempo absoluto conhecido no início de cada troço de piscina limpa:
   // 1ª piscina (15m) -> aos_15m_s
@@ -1569,30 +1601,74 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
 
   troçosLimpos.forEach(function (t) {
     if (t.baseadoNoBreakout) {
-      // Troço especial (piscina de 25m): vai do breakout real (tempo+distância
-      // já medidos na partida ou na saída da viragem) até ao toque na parede
-      // seguinte. A distância do troço depende de ONDE o breakout aconteceu,
-      // não é fixa — por isso o cálculo é diferente dos troços de metros fixos.
-      const tBreakout = t.campoBreakoutTempo ? n(t.campoBreakoutTempo) : null;
+      // Troço piscina 25m: nado limpo entre tv_saida_X (+15m após viragem)
+      // e tv_pre5_X (-5m antes da parede seguinte) = zona de 5m de nado limpo.
+      // tb_saida_X (breakout real) usado se existir; tv_saida_X como fallback.
+      const tBreakoutAlt = (t.campoBreakoutTempoAlt && n(t.campoBreakoutTempoAlt) !== null)
+        ? n(t.campoBreakoutTempoAlt) : null;
+      const tBreakout = tBreakoutAlt !== null ? tBreakoutAlt : (t.campoBreakoutTempo ? n(t.campoBreakoutTempo) : null);
       const distBreakout = t.campoBreakoutDist ? n(t.campoBreakoutDist) : null;
-      // Fim do nado limpo = toque na parede -5m (tv_pre5_X para viragens, seg_chegada para chegada)
+
+      // Fim do nado limpo = tv_pre5_X (5m antes da parede) ou seg_chegada
       const viragemFim = prova.viragens.find(function(v) { return v.emMetros === t.fimParede; });
       const tFimNadoLimpo = viragemFim
         ? n('tv_pre5_' + viragemFim.emMetros)
         : n('seg_chegada') || n('tempo_total');
-      // Distância de nado limpo = distância do percurso - distBreakout - 5m (chegada)
-      const distNadoLimpo = (distBreakout !== null) ? (tamanhoPiscina - distBreakout - 5) : null;
+
+      // Distância de nado limpo:
+      // Se usou tb_saida (breakout real): tamanhoPiscina - distBreakout - 5m
+      // Se usou tv_saida (+15m): a distância é fixa = tamanhoPiscina - 15 - 5 = 5m (para p25)
+      var distNadoLimpo;
+      if (tBreakoutAlt !== null && distBreakout !== null) {
+        // Breakout real conhecido
+        distNadoLimpo = tamanhoPiscina - distBreakout - 5;
+      } else if (t.campoBreakoutTempoAlt) {
+        // Usou tv_saida (+15m da viragem): distância = piscina - 15 - 5 = 5m
+        distNadoLimpo = tamanhoPiscina - 15 - 5;
+      } else {
+        // 1ª piscina: do breakout até -5m
+        distNadoLimpo = (distBreakout !== null) ? (tamanhoPiscina - distBreakout - 5) : null;
+      }
+
       const duracao = (tBreakout !== null && tFimNadoLimpo !== null) ? (tFimNadoLimpo - tBreakout) : null;
       const distanciaTroço = distNadoLimpo;
-      // Não há braçadas antes do breakout (é sempre nado subaquático), por
-      // isso reutilizamos a mesma contagem já pedida para o percurso inteiro
-      // (campo "Ciclos entre 0-Xm"), em vez de pedir o número outra vez.
-      const nCiclos = n('ciclos_b' + t.fimParede);
+      // Ciclos: para piscina 25m usar nc_nl_X (nado limpo), para outras ciclos_bX
+      const nCiclos = tamanhoPiscina === 25
+        ? (n('nc_nl_' + t.fimParede) !== null ? n('nc_nl_' + t.fimParede) : n('ciclos_b' + t.fimParede))
+        : n('ciclos_b' + t.fimParede);
 
       let freq = null, distPorCiclo = null, vel = null;
       if (duracao && duracao > 0 && distanciaTroço !== null) vel = distanciaTroço / duracao;
-      if (nCiclos && duracao && duracao > 0) freq = (nCiclos / duracao) * 60;
-      if (nCiclos && nCiclos > 0 && distanciaTroço !== null) distPorCiclo = distanciaTroço / nCiclos;
+      if (nCiclos && nCiclos > 0) {
+        // Distância de nado real = piscina - breakout - 5m (chegada)
+        // Para 1ª piscina: usa distancia_breakout_m
+        // Para pós-viragem: usa saida_dist_X
+        var distNadoReal;
+        if (t.campoBreakoutTempoAlt && t.apósViragemEm !== undefined) {
+          // pós-viragem: usa saida_dist_X
+          var distSaida = n('saida_dist_' + t.apósViragemEm);
+          distNadoReal = (distSaida !== null) ? (tamanhoPiscina - distSaida - 5) : null;
+        } else {
+          // 1ª piscina: usa distancia_breakout_m
+          var distBK = n('distancia_breakout_m');
+          distNadoReal = (distBK !== null) ? (tamanhoPiscina - distBK - 5) : distanciaTroço;
+        }
+        if (distNadoReal !== null) distPorCiclo = distNadoReal / nCiclos;
+
+        // Frequência: ciclos / duração total do percurso de nado
+        var duracaoFreq = null;
+        if (t.campoBreakoutTempoAlt && t.apósViragemEm !== undefined) {
+          var tSaidaAnterior = n('tv_saida_' + t.apósViragemEm);
+          var tToque = viragemFim ? n('tv_aprox_' + viragemFim.emMetros) : (n('tv_aprox_' + t.fimParede) || n('seg_chegada') || n('tempo_total'));
+          if (tSaidaAnterior !== null && tToque !== null) duracaoFreq = tToque - tSaidaAnterior;
+        } else {
+          duracaoFreq = duracao;
+        }
+        if (duracaoFreq && duracaoFreq > 0) {
+          freq = (nCiclos / duracaoFreq) * 60;
+          if (freq > 120) freq = null;
+        }
+      }
 
       out.porTroço.push({
         id: t.id, label: t.label, estilo: t.estilo, inicio: null, fim: t.fimParede,
@@ -1838,6 +1914,8 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
   });
   out.parciais50 = calcularParciais(prova, dados, out, 50);
   out.parciais100 = calcularParciais(prova, dados, out, 100);
+  // Parciais a cada 25m — só para piscina de 25m
+  out.parciais25 = (tamanhoPiscina === 25) ? calcularParciais25m(prova, dados, out) : null;
 
   const p50v = out.parciais50.filter(function(p){return p.parcial !== null;});
   if (p50v.length) out.mediaParcial50 = p50v.reduce(function(s,p){return s+p.parcial;},0) / p50v.length;
@@ -1886,7 +1964,7 @@ function calcularMetricas(estilo, distancia, dados, tamanhoPiscina) {
 }
 
 function tempoAbsolutoEntradaAproximacao(viragem, prova, dados) {
-  function n(id) { const v = dados[id]; return (v === undefined || v === '' || v === null) ? null : parseFloat(v); }
+  function n(id) { const v = dados[id]; return (v === undefined || v === '' || v === null) ? null : parseFloat(String(v).replace(',', '.')); }
   // a aproximação começa 5m antes da viragem.
   // Em piscina de 25m, a zona de "piscina limpa" é baseada no breakout (sem
   // metros fixos), por isso não há troço nenhum que termine exatamente na
@@ -1930,8 +2008,30 @@ function tempoAbsolutoEntradaAproximacao(viragem, prova, dados) {
 // ou ponto equivalente nos 50/100/400m finais sem viragem). Por isso os
 // parciais a cada 50/100m usam sempre tv_aprox_X como tempo absoluto em X.
 
+function calcularParciais25m(prova, dados, calc) {
+  function n(id) { const v = dados[id]; return (v === undefined || v === '' || v === null) ? null : parseFloat(String(v).replace(',', '.')); }
+  const resultados = [];
+  let anterior = 0;
+  for (var m = 25; m <= prova.distancia; m += 25) {
+    var tAbs;
+    if (m === prova.distancia) {
+      tAbs = calc.tempoTotal;
+    } else {
+      // Em piscina 25m o toque na parede está em tv_aprox_X
+      tAbs = n('tv_aprox_' + m);
+    }
+    if (tAbs !== null && tAbs !== undefined) {
+      resultados.push({ metros: m, tempo: tAbs, parcial: tAbs - anterior });
+      anterior = tAbs;
+    } else {
+      resultados.push({ metros: m, tempo: null, parcial: null });
+    }
+  }
+  return resultados;
+}
+
 function calcularParciais(prova, dados, calc, passo) {
-  function n(id) { const v = dados[id]; return (v === undefined || v === '' || v === null) ? null : parseFloat(v); }
+  function n(id) { const v = dados[id]; return (v === undefined || v === '' || v === null) ? null : parseFloat(String(v).replace(',', '.')); }
   const resultados = [];
   let anterior = 0;
   for (let m = passo; m <= prova.distancia; m += passo) {
@@ -3397,6 +3497,34 @@ function iniciarFormulario() {
   nav('marcarVideo');
 }
 
+function regravarDadosSemVideo(swimmerId, analiseId) {
+  const sw = getSwimmer(swimmerId);
+  const an = sw && sw.analises.find(function(a) { return a.id === analiseId; });
+  if (!an) return;
+  state.novaAnalise = { estilo: an.estilo, distancia: an.distancia, tamanhoPiscina: an.tamanhoPiscina || 50 };
+  const dados = Object.assign({}, an.dadosBrutos || {});
+
+  // Migrar IDs igual ao regravarDadosAnalise
+  if (an.distancia === 200 && (an.tamanhoPiscina || 50) === 50) {
+    var migrarTempos = { 'tt_45m': 'tt_p1', 'tt_95m': 'tt_p2', 'tt_145m': 'tt_p3', 'tt_195m': 'tt_p4',
+                         'tt_25m': 'parc_25m', 'tt_75m': 'parc_75m', 'tt_125m': 'parc_125m', 'tt_175m': 'parc_175m' };
+    Object.keys(migrarTempos).forEach(function(antigo) {
+      if (dados[antigo] !== undefined && dados[migrarTempos[antigo]] === undefined) {
+        dados[migrarTempos[antigo]] = dados[antigo];
+      }
+    });
+  }
+
+  state.formData = dados;
+  if (an.observacoes) state.formData['observacoes'] = an.observacoes;
+  state.dataProva = an.dataProva || an.criadoEm.slice(0, 10);
+  state.localProva = an.localProva || '';
+  state.competicao = an.competicao || '';
+  state.editandoAnaliseId = analiseId;
+  state.formStep = 'tempos';
+  nav('formulario', { swimmerId: swimmerId });
+}
+
 function regravarDadosAnalise(swimmerId, analiseId) {
   const sw = getSwimmer(swimmerId);
   const an = sw && sw.analises.find(function(a) { return a.id === analiseId; });
@@ -3912,33 +4040,12 @@ function renderMarcarVideo() {
     return html;
   }
 
+  // Vídeo
   html += '<div class="video-player-wrap" id="videoPlayerWrap" style="position:relative">' +
     '<video id="videoPlayer" src="' + state.video.objectUrl + '" playsinline></video>' +
     '<canvas id="anotacaoCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5"></canvas>' +
     '<div class="video-clock-overlay" id="videoClockOverlay">--:--</div>' +
     '<button class="video-zoom-btn" onclick="toggleZoomVideo()" id="videoZoomBtn">' + iconeZoomSvg(false) + '</button>' +
-    '</div>';
-
-  // Barra de ferramentas de anotação
-  html += '<div id="anotacaoToolbar" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin:8px 0;gap:10px;flex-wrap:wrap;align-items:center">' +
-    // Ferramenta
-    '<div style="display:flex;gap:6px">' +
-    '<button id="toolReta" onclick="selTool(\'reta\')" title="Traçar reta" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--accent);background:var(--accent);color:#04141f;font-size:13px;font-weight:700">— Reta</button>' +
-    '<button id="toolLapis" onclick="selTool(\'lapis\')" title="Lápis livre" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--txt);font-size:13px;font-weight:700">✏ Lápis</button>' +
-    '</div>' +
-    // Cores
-    '<div style="display:flex;gap:4px;flex-wrap:wrap">' +
-    ['#ffffff','#000000','#ff3b3b','#2E6DA4','#22c55e','#facc15','#f97316','#f472b6'].map(function(c) {
-      return '<div onclick="selCor(\'' + c + '\')" style="width:22px;height:22px;border-radius:50%;background:' + c + ';cursor:pointer;border:2px solid ' + (c === '#ffffff' ? '#aaa' : 'transparent') + '" id="cor_' + c.slice(1) + '"></div>';
-    }).join('') +
-    '</div>' +
-    // Espessura
-    '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt3)">' +
-    '<span>Esp.</span>' +
-    '<input type="range" id="espessura" min="1" max="12" value="2" style="width:70px" oninput="anotacaoEspessura=parseInt(this.value)">' +
-    '</div>' +
-    // Apagar
-    '<button onclick="apagarAnotacoes()" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--txt3);font-size:12px">Apagar tudo</button>' +
     '</div>';
 
   html += '<div class="video-zoom-controls" id="videoZoomControls" style="display:none">' +
@@ -3955,6 +4062,7 @@ function renderMarcarVideo() {
     '<button onclick="videoPlayPause()" id="videoPlayBtn">▶ Play</button>' +
     '<button class="vc-frame" onclick="videoFrameStep(1)">⏭</button>' +
     '</div>';
+  html += '</div>';
 
   html += '<div id="videoMarkSection"></div>';
 
@@ -4863,8 +4971,11 @@ function renderRelatorio() {
     console.error('renderDadosTecnicos erro:', e);
   }
 
-  html += '<button class="rep-btn rep-btn-ghost" onclick="editarAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Editar dados da prova</button>';
-  html += '<button class="rep-btn rep-btn-ghost" onclick="regravarDadosAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Regravar dados no vídeo</button>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">' +
+    '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="editarAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Editar dados da prova</button>' +
+    '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="regravarDadosAnalise(\'' + sw.id + '\',\'' + an.id + '\')">Regravar com vídeo</button>' +
+    '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="regravarDadosSemVideo(\'' + sw.id + '\',\'' + an.id + '\')">Regravar sem vídeo</button>' +
+    '</div>';
   html += '<div style="display:flex;gap:10px;margin-top:10px">' +
     '<button class="rep-btn rep-btn-primary" style="margin-top:0" onclick="confirmarGuardarRelatorio()">Guardar</button>' +
     '<button class="rep-btn rep-btn-ghost" style="margin-top:0" onclick="exportarRelatorio()">Imagem</button>' +
@@ -5170,6 +5281,10 @@ function renderGraficos(an, m, mPB, labelSerie1, labelSerie2) {
   }
 
   if (!é50p50) {
+    // Parciais a cada 25m — só piscina 25m
+    if (an.tamanhoPiscina === 25 && m.parciais25 && m.parciais25.some(function(p){return p.parcial !== null;})) {
+      html += chartCard('chart_parc25p25', 'Parciais a cada 25m', 'tempo de cada parcial' + tempoTotalStr + (mPB && tempoTotalPBStr ? ' vs ' + tempoTotalPBStr : ''));
+    }
     html += chartCard('chart_parc50', 'Parciais a cada 50m', 'tempo de cada parcial' + tempoTotalStr + (mPB && tempoTotalPBStr ? ' vs ' + tempoTotalPBStr : ''));
     if (m.parciais100.length > 1) {
       html += chartCard('chart_parc100', 'Parciais a cada 100m', 'tempo de cada parcial' + tempoTotalStr + (mPB && tempoTotalPBStr ? ' vs ' + tempoTotalPBStr : ''));
@@ -5640,6 +5755,15 @@ function desenharGraficosComLabels(an, m, mPB, labelSerie1, labelSerie2) {
   const tempoTotalStr = m.tempoTotal ? ' · Total: ' + fmtTempo(m.tempoTotal) : '';
   const tempoTotalPBStr = (mPB && mPB.tempoTotal) ? ' · Total: ' + fmtTempo(mPB.tempoTotal) : '';
 
+  // Parciais a cada 25m — só piscina 25m
+  if (an.tamanhoPiscina === 25 && m.parciais25 && m.parciais25.some(function(p){return p.parcial !== null;})) {
+    mkLineBar('chart_parc25p25',
+      m.parciais25.map(function(p){return p.metros+'m';}),
+      m.parciais25.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}),
+      mPB && mPB.parciais25 ? mPB.parciais25.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}) : null,
+      'line', '', { beginAtZero: false, formatador: fmtTempo });
+  }
+
   mkLineBar('chart_parc50',
     m.parciais50.map(function(p){return p.metros+'m';}),
     m.parciais50.map(function(p){return p.parcial?+p.parcial.toFixed(2):null;}),
@@ -5900,7 +6024,9 @@ function ligarCanvasListeners() {
 
 function mostrarToolbarAnotacao(mostrar) {
   var tb = document.getElementById('anotacaoToolbar');
-  if (tb) tb.style.display = mostrar ? 'flex' : 'none';
+  if (tb) {
+    tb.style.display = mostrar ? 'flex' : 'none';
+  }
   if (mostrar) {
     setTimeout(function() { ligarCanvasListeners(); selCor(anotacaoCor); selTool(anotacaoTool); }, 50);
   } else {
